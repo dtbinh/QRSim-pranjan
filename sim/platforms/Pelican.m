@@ -68,10 +68,11 @@ classdef Pelican<Steppable & Platform
         eX;          % estimated state  [~px;~py;~pz;~phi;~theta;~psi;0;0;0;~p;~q;~r;0;~ax;~ay;~az;~h;~pxdot;~pydot;~hdot]
         valid;       % the state of the platform is invalid
         graphicsOn;  % true if graphics is on
-        obstacles = [ -70 50 
+        obstacles = [ 5 15 
                                                         0 0 
-                                                        -10 -10 
-                                                        5 5];;
+                                                        -10 -5 
+                                                        3 2];
+          ;
     end
     
     methods (Access = public)
@@ -290,6 +291,7 @@ classdef Pelican<Steppable & Platform
                 estimatedAHA(4:6);0;estimatedAHA(7:10);estimatedPosNED(4:5);estimatedAHA(11)];
             
             obj.valid = 1;
+            %obj.coll = 0;
             
             % clean the trajectory plot if any
             if(obj.graphicsOn)
@@ -390,11 +392,11 @@ classdef Pelican<Steppable & Platform
                     end
                 else
                     if(obj.inCollision())
-                        fprintf(['warning: platform state not valid, in collision!\n Normally this should not happen; ',...
+                        error(['warning: platform state not valid, in collision!\n Normally this should not happen; ',...
                             'however if you think this is fine and you want to stop this warning use the task parameter behaviourIfStateNotValid\n']);
                     else
                         if(obj.obstacleCheck())
-                             %ababujo: including obstaacle check
+                             %ababujo: including obstacle check
                             error('Platform state not valid, in collision with an obstacle!\n');
                         else
                             

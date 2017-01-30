@@ -49,7 +49,7 @@ classdef TaskKeepSpot<Task
             % these need to follow the conventions of axis(), they are in m, Z down
             % note that the lowest Z limit is the refence for the computation of wind shear and turbulence effects
             taskparams.environment.area.limits = [-10 20 -10 10 -20 0];
-            taskparams.environment.area.type = 'BoxArea';
+            taskparams.environment.area.type = 'BoxWithObstaclesArea';
             
             % originutmcoords is the location of the RVC (our usual flying site)
             % generally when this is changed gpsspacesegment.orbitfile and
@@ -59,9 +59,15 @@ classdef TaskKeepSpot<Task
             taskparams.environment.area.originutmcoords.N = N;
             taskparams.environment.area.originutmcoords.h = h;
             taskparams.environment.area.originutmcoords.zone = zone;
-            taskparams.environment.area.graphics.type = 'AreaGraphics';
+            taskparams.environment.area.graphics.type = 'AreaWithObstaclesGraphics';
             taskparams.environment.area.graphics.backgroundimage = 'ucl-rvc-zoom.tif';
+                %ababujo:obstacles{Column - X Y Z(h) r}
             
+            taskparams.environment.area.obstacles = [ 5 15 
+                                                        0 0 
+                                                        -10 -5 
+                                                        3 2];
+          
             % GPS
             % The space segment of the gps system
             taskparams.environment.gpsspacesegment.on = 1; % if off the gps returns the noiseless position

@@ -51,6 +51,7 @@ for i=1:N,
         if(norm(wp(k,:)'-state.platforms{1}.getX(1:3))< 0.2)
                 if(k<size(wp,1))
                     k = k+1;
+ 
                 end
                 fprintf('current location with k=%d:\n',k);
                disp(state.platforms{1}.getX(1:3));

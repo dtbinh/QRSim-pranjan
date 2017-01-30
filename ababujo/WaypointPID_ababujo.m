@@ -82,7 +82,7 @@ classdef WaypointPID_ababujo<handle
             %error. If it detects an obstacle far off, throw warning as of
             %now
             
-            if()
+            %if()
             
             x = X(1);
             y = X(2);
