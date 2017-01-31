@@ -49,6 +49,10 @@ classdef Pelican<Steppable & Platform
         G = 9.81;    %  gravity m/s^2
         MASS = 1.68; %  mass of the platform Kg
         labels = {'px','py','pz','phi','theta','psi','u','v','w','p','q','r','thrust'};
+        obstacles = [ 5 15 
+                                                        0 0 
+                                                        -10 -5 
+                                                        3 2];
     end
     
     properties (Access = protected)
@@ -68,10 +72,7 @@ classdef Pelican<Steppable & Platform
         eX;          % estimated state  [~px;~py;~pz;~phi;~theta;~psi;0;0;0;~p;~q;~r;0;~ax;~ay;~az;~h;~pxdot;~pydot;~hdot]
         valid;       % the state of the platform is invalid
         graphicsOn;  % true if graphics is on
-        obstacles = [ 5 15 
-                                                        0 0 
-                                                        -10 -5 
-                                                        3 2];
+        
           ;
     end
     
@@ -354,7 +355,12 @@ classdef Pelican<Steppable & Platform
             for i=1:length(obj.simState.platforms),
                 if(obj.simState.platforms{i} ~= obj)
                     if(norm(obj.simState.platforms{i}.X(1:3)-obj.X(1:3))< obj.collisionD)
-                        coll = 1;
+                        %coll = 1;
+                        fprintf('Removing the colliding uavs');
+                        px= obj.simState.platforms{i}.X(1); 
+                        py= obj.simState.platforms{i}.X(2); 
+                        pz= obj.simState.platforms{i}.X(3); 
+                        obj.simState.platforms{i}.setX([px; py; pz; 0; 0; 0]);
                     end
                 end
             end

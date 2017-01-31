@@ -99,7 +99,7 @@ classdef TaskKeepVel<Task
             
             %%%%% platforms %%%%%
             % Configuration and initial state for each of the platforms
-            taskparams.platforms(1).configfile = 'pelican_config';
+            taskparams.platforms(1).configfile = 'pelican_config_no_obstacles';
         end
         
         function reset(obj)

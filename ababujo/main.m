@@ -49,12 +49,16 @@ for i=1:N,
         
         %ababujo: If the current waypoint is reached go to next
         if(norm(wp(k,:)'-state.platforms{1}.getX(1:3))< 0.2)
-                if(k<size(wp,1))
+                if((k<size(wp,1)) && (k>1))
                     k = k+1;
  
                 end
+                if((k==1) && (i>2))
+                    k = k+1;
+                end
                 fprintf('current location with k=%d:\n',k);
-               disp(state.platforms{1}.getX(1:3));
+                disp(state.platforms{1}.getX(1:3));
+                
         end
     %end
 end
