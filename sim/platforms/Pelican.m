@@ -242,7 +242,109 @@ classdef Pelican<Steppable & Platform
             % true if the state is valid
             iv = obj.valid;
         end
+               %ababujo: Obstacle Check
         
+        function [obsx,obsy,obsz] = obstacleCheck(obj)
+            % returns 1 if its near an obstacle
+            obsx = 0;
+            obsy = 0;
+            obsz = 0;
+            for i = 1: length(obj.simState.platforms),
+                for j = 1: size(obj.obstacles,2)
+                    if(((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
+                          (obj.simState.platforms{i}.X(2) - obj.obstacles(2,j))^2 + ...
+                          (obj.simState.platforms{i}.X(3) - (obj.obstacles(3,j)/2))^2)^0.5 < obj.collisionD) 
+                        obsx = obj.simState.platforms{i}.X(1) - obj.obstacles(4,j) ;
+                        obsy = obj.simState.platforms{i}.X(2);
+                        obsz = obj.simState.platforms{i}.X(3);
+                        fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
+                        break;
+                    end
+                    if(((obj.simState.platforms{i}.X(1) - (obj.obstacles(1,j)+ obj.obstacles(4,j)))^2 + ...
+                          (obj.simState.platforms{i}.X(2) - obj.obstacles(2,j))^2 + ...
+                          (obj.simState.platforms{i}.X(3) - (obj.obstacles(3,j)/2))^2)^0.5 < obj.collisionD)
+                      obsx = obj.simState.platforms{i}.X(1) + obj.obstacles(4,j) ;
+                        obsy = obj.simState.platforms{i}.X(2);
+                        obsz = obj.simState.platforms{i}.X(3);
+                        fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
+                        break;
+                    end
+                    if(((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
+                          (obj.simState.platforms{i}.X(2) - (obj.obstacles(2,j)+ obj.obstacles(4,j)))^2 + ...
+                          (obj.simState.platforms{i}.X(3) - (obj.obstacles(3,j)/2))^2)^0.5 < obj.collisionD)
+                      obsy = obj.simState.platforms{i}.X(2) + obj.obstacles(4,j) ;
+                      obsx = obj.simState.platforms{i}.X(1);
+                      obsz = obj.simState.platforms{i}.X(3);
+                      fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
+                      break;
+                    end
+                    if(((obj.simState.platforms{i}.X(1) - (obj.obstacles(1,j) - obj.obstacles(4,j)))^2 + ...
+                          (obj.simState.platforms{i}.X(2) - obj.obstacles(2,j))^2 + ...
+                          (obj.simState.platforms{i}.X(3) - (obj.obstacles(3,j)/2))^2)^0.5 < obj.collisionD)
+                      obsx = obj.simState.platforms{i}.X(1) - obj.obstacles(4,j) ;
+                      obsy = obj.simState.platforms{i}.X(2);
+                      obsz = obj.simState.platforms{i}.X(3);
+                      fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
+                      break;
+                    end
+                    if(((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
+                          (obj.simState.platforms{i}.X(2) - (obj.obstacles(2,j) - obj.obstacles(4,j)))^2 + ...
+                          (obj.simState.platforms{i}.X(3) - (obj.obstacles(3,j)/2))^2)^0.5 < obj.collisionD)
+                      obsy = obj.simState.platforms{i}.X(2) - obj.obstacles(4,j) ;
+                      obsx = obj.simState.platforms{i}.X(1);
+                      obsz = obj.simState.platforms{i}.X(3);
+                      fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
+                      break;
+                    end
+                    if(((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
+                          (obj.simState.platforms{i}.X(2) - obj.obstacles(2,j))^2 + ...
+                          (obj.simState.platforms{i}.X(3) - obj.obstacles(3,j))^2)^0.5 < obj.collisionD) 
+                        obsx = obj.simState.platforms{i}.X(1) - obj.obstacles(4,j) ;
+                        obsy = obj.simState.platforms{i}.X(2);
+                        obsz = obj.simState.platforms{i}.X(3);
+                        fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
+                        break;
+                    end
+                    if(((obj.simState.platforms{i}.X(1) - (obj.obstacles(1,j)+ obj.obstacles(4,j)))^2 + ...
+                          (obj.simState.platforms{i}.X(2) - obj.obstacles(2,j))^2 + ...
+                          (obj.simState.platforms{i}.X(3) - obj.obstacles(3,j))^2)^0.5 < obj.collisionD)
+                      obsx = obj.simState.platforms{i}.X(1) + obj.obstacles(4,j) ;
+                        obsy = obj.simState.platforms{i}.X(2);
+                        obsz = obj.simState.platforms{i}.X(3);
+                        fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
+                    end
+                    if(((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
+                          (obj.simState.platforms{i}.X(2) - (obj.obstacles(2,j)+ obj.obstacles(4,j)))^2 + ...
+                          (obj.simState.platforms{i}.X(3) - obj.obstacles(3,j))^2)^0.5 < obj.collisionD)
+                      obsy = obj.simState.platforms{i}.X(2) + obj.obstacles(4,j) ;
+                      obsx = obj.simState.platforms{i}.X(1);
+                      obsz = obj.simState.platforms{i}.X(3);
+                      fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
+                      break;
+                    end
+                    if(((obj.simState.platforms{i}.X(1) - (obj.obstacles(1,j) - obj.obstacles(4,j)))^2 + ...
+                          (obj.simState.platforms{i}.X(2) - obj.obstacles(2,j))^2 + ...
+                          (obj.simState.platforms{i}.X(3) - obj.obstacles(3,j)/2)^2)^0.5 < obj.collisionD)
+                      obsx = obj.simState.platforms{i}.X(1) - obj.obstacles(4,j) ;
+                      obsy = obj.simState.platforms{i}.X(2);
+                      obsz = obj.simState.platforms{i}.X(3);
+                      fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
+                      break;
+                    end
+                    if(((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
+                          (obj.simState.platforms{i}.X(2) - (obj.obstacles(2,j) - obj.obstacles(4,j)))^2 + ...
+                          (obj.simState.platforms{i}.X(3) - obj.obstacles(3,j))^2)^0.5 < obj.collisionD)
+                      obsy = obj.simState.platforms{i}.X(2) - obj.obstacles(4,j) ;
+                      obsx = obj.simState.platforms{i}.X(1);
+                      obsz = obj.simState.platforms{i}.X(3);
+                      fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
+                      break;
+                    end
+                            
+                    
+                end
+            end
+        end
         function obj = setX(obj,X)
             % reinitialise the current state and noise
             %
@@ -359,74 +461,17 @@ classdef Pelican<Steppable & Platform
                         fprintf('Removing the colliding uavs');
                         px= obj.simState.platforms{i}.X(1); 
                         py= obj.simState.platforms{i}.X(2); 
-                        pz= obj.simState.platforms{i}.X(3); 
+                        %pz= obj.simState.platforms{i}.X(3); 
                         obj.simState.platforms{i}.setX([px; py; 0; 0; 0; 0]);
+                        rx= obj.X(1); 
+                        ry= obj.X(2); 
+                        %pz= obj.simState.platforms{i}.X(3); 
+                        obj.setX([rx; ry; 0; 0; 0; 0]);
                     end
                 end
             end
         end
-        
-        %ababujo: Obstacle Check
-        
-        function obs = obstacleCheck(obj)
-            % returns 1 if its near an obstacle
-            obs = 0;
-            for i = 1: length(obj.simState.platforms),
-                for j = 1: size(obj.obstacles,2)
-                   % lx = [(obj.obstacles(1,j) - obj.obstacles(4,j)); obj.obstacles(2,j)];
-                   % rx = [(obj.obstacles(1,j) + obj.obstacles(4,j)); obj.obstacles(2,j)];
-                   % ly = [obj.obstacles(1,j);(obj.obstacles(2,j) - obj.obstacles(4,j))];
-                   % ry = [obj.obstacles(1,j); (obj.obstacles(2,j) + obj.obstacles(4,j))];
-                   
-                    if((((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
-                          (obj.simState.platforms{i}.X(2) - obj.obstacles(2,j))^2 + ...
-                          (obj.simState.platforms{i}.X(3) - obj.obstacles(3,j))^2)^0.5 < obj.collisionD)|| ...
-                          (((obj.simState.platforms{i}.X(1) - (obj.obstacles(1,j)+ obj.obstacles(4,j)))^2 + ...
-                          (obj.simState.platforms{i}.X(1) - obj.obstacles(2,j))^2 + ...
-                          (obj.simState.platforms{i}.X(1) - obj.obstacles(3,j))^2)^0.5 < obj.collisionD)|| ...
-                          (((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
-                          (obj.simState.platforms{i}.X(1) - (obj.obstacles(2,j)+ obj.obstacles(4,j)))^2 + ...
-                          (obj.simState.platforms{i}.X(1) - obj.obstacles(3,j))^2)^0.5 < obj.collisionD)|| ...
-                          (((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
-                          (obj.simState.platforms{i}.X(1) - obj.obstacles(2,j))^2 + ...
-                          (obj.simState.platforms{i}.X(1) - (obj.obstacles(3,j)+ obj.obstacles(4,j)))^2)^0.5 < obj.collisionD)|| ...
-                          (((obj.simState.platforms{i}.X(1) - (obj.obstacles(1,j)- obj.obstacles(4,j)))^2 + ...
-                          (obj.simState.platforms{i}.X(1) - obj.obstacles(2,j))^2 + ...
-                          (obj.simState.platforms{i}.X(1) - obj.obstacles(3,j))^2)^0.5 < obj.collisionD)|| ...
-                          (((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
-                          (obj.simState.platforms{i}.X(1) - (obj.obstacles(2,j) - obj.obstacles(4,j)))^2 + ...
-                          (obj.simState.platforms{i}.X(1) - obj.obstacles(3,j))^2)^0.5 < obj.collisionD)|| ...
-                          (((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
-                          (obj.simState.platforms{i}.X(1) - obj.obstacles(2,j))^2 + ...
-                          (obj.simState.platforms{i}.X(1) - (obj.obstacles(3,j) - obj.obstacles(4,j)))^2)^0.5 < obj.collisionD) || ...
-                          (((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
-                          (obj.simState.platforms{i}.X(2) - obj.obstacles(2,j))^2 + ...
-                          (obj.simState.platforms{i}.X(3) - (obj.obstacles(3,j)/2))^2)^0.5 < obj.collisionD) || ...
-                          (((obj.simState.platforms{i}.X(1) - (obj.obstacles(1,j)+ obj.obstacles(4,j)))^2 + ...
-                          (obj.simState.platforms{i}.X(2) - obj.obstacles(2,j))^2 + ...
-                          (obj.simState.platforms{i}.X(3) - (obj.obstacles(3,j)/2))^2)^0.5 < obj.collisionD)|| ...
-                          (((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
-                          (obj.simState.platforms{i}.X(2) - (obj.obstacles(2,j)+ obj.obstacles(4,j)))^2 + ...
-                          (obj.simState.platforms{i}.X(3) - (obj.obstacles(3,j)/2))^2)^0.5 < obj.collisionD) || ...
-                          (((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
-                          (obj.simState.platforms{i}.X(2) - obj.obstacles(2,j))^2 + ...
-                          (obj.simState.platforms{i}.X(3) - ((obj.obstacles(3,j)/2)+ obj.obstacles(4,j)))^2)^0.5 < obj.collisionD) || ...
-                          (((obj.simState.platforms{i}.X(1) - (obj.obstacles(1,j) - obj.obstacles(4,j)))^2 + ...
-                          (obj.simState.platforms{i}.X(2) - obj.obstacles(2,j))^2 + ...
-                          (obj.simState.platforms{i}.X(3) - (obj.obstacles(3,j)/2))^2)^0.5 < obj.collisionD)|| ...
-                          (((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
-                          (obj.simState.platforms{i}.X(2) - (obj.obstacles(2,j) - obj.obstacles(4,j)))^2 + ...
-                          (obj.simState.platforms{i}.X(3) - (obj.obstacles(3,j)/2))^2)^0.5 < obj.collisionD) || ...
-                          (((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
-                          (obj.simState.platforms{i}.X(2) - obj.obstacles(2,j))^2 + ...
-                          (obj.simState.platforms{i}.X(3) - ((obj.obstacles(3,j)/2) - obj.obstacles(4,j)))^2)^0.5 < obj.collisionD)  )
-                          
-                        obs = 1;
-                        fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
-                    end
-                end
-            end
-        end
+       
         
         function obj = printStateNotValidError(obj)
             % display state error info
@@ -446,7 +491,7 @@ classdef Pelican<Steppable & Platform
                     else
                         if(obj.obstacleCheck())
                              %ababujo: including obstacle check
-                            error('Platform state not valid, in collision with an obstacle!\n');
+                            fprintf('Platform state not valid, in collision with an obstacle!\n');
                         else
                             
                             ids = (obj.X(1:12) < obj.stateLimits(:,1)) | (obj.X(1:12) > obj.stateLimits(:,2));
@@ -465,6 +510,8 @@ classdef Pelican<Steppable & Platform
             
             end
         end
+        
+
     end    
     methods (Access=protected)
         
@@ -495,7 +542,7 @@ classdef Pelican<Steppable & Platform
             %  class and should not be called directly.
             %
             
-            if(obj.valid)
+            if((obj.valid)||(obj.obstacleCheck()))
                 
                 % do scaling of inputs
                 US = obj.scaleControls(U);

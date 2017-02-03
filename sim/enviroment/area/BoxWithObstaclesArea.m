@@ -35,7 +35,7 @@ classdef BoxWithObstaclesArea<Area
                     tmp.backgroundimage = objparams.graphics.backgroundimage;
                 end
                 % assert(isfield(objparams,'obstacles'),'boxwithobstaclesarea:noobstacles','for this type of flight area the task must define obstacles environment.area.obstacles');
-                %tmp.obstacles = objparams.obstacles;
+                tmp.obstacles = objparams.obstacles;
                 
                 obj.graphics=feval(objparams.graphics.type,tmp);
             end

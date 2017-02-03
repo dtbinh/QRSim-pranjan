@@ -35,32 +35,48 @@ for i=1:N,
     tloop=tic;
     % one should always make sure that the uav is valid
     % i.e. no collision or out of area event happened
-    %for k=1:size(wp,1)
-        if(state.platforms{1}.isValid())
+ 
+    disp(state.platforms{1}.obstacles);
+    [obsx,obsy,obsz] = state.platforms{1}.obstacleCheck();
+    if(state.platforms{1}.obstacleCheck())
+            if(~((obsx-state.platforms{1}.getX(1))<1))
+                wp(k,1) = obsx;
+            end
+            if(~((obsy-state.platforms{1}.getX(2))<1))
+                wp(k,2) = obsy;
+            end
+            if(~((obsz-state.platforms{1}.getX(3))<1))
+                wp(k,3) = obsz;
+            end
+                
+            U = pid.computeU(state.platforms{1}.getX(),wp(k,:)',0);
+            %U = [0;0.02;0.595;0;12];
+            % step simulator
+            qrsim.step(U);
+    end
+    if(state.platforms{1}.isValid())
             % compute controls
             U = pid.computeU(state.platforms{1}.getX(),wp(k,:)',0);
             %U = [0;0.02;0.595;0;12];
             % step simulator
             qrsim.step(U);
-        end
-        % wait so to run in real time
-        wait = max(0,state.task.dt-toc(tloop));
-        pause(wait);
+    end
+    % wait so to run in real time
+    wait = max(0,state.task.dt-toc(tloop));
+    pause(wait);
         
-        %ababujo: If the current waypoint is reached go to next
-        if(norm(wp(k,:)'-state.platforms{1}.getX(1:3))< 0.2)
-                if((k<size(wp,1)) && (k>1))
-                    k = k+1;
- 
-                end
-                if((k==1) && (i>2))
-                    k = k+1;
-                end
-                fprintf('current location with k=%d:\n',k);
-                disp(state.platforms{1}.getX(1:3));
-                
+    %ababujo: If the current waypoint is reached go to next
+    if(norm(wp(k,:)'-state.platforms{1}.getX(1:3))< 0.3)
+        if((k<size(wp,1)) && (k>1))
+            k = k+1;
         end
-    %end
+        if((k==1) && (i>2))
+            k = k+1;
+        end
+        fprintf('current location with k=%d:\n',k);
+        disp(state.platforms{1}.getX(1:3));
+                
+    end
 end
 
 % get reward
