@@ -107,7 +107,7 @@ classdef TaskKeepSpot10_ababujo<Task
             %%%%% platforms %%%%%
             % Configuration for each of the platforms
             for i=1:10,
-                taskparams.platforms(i).configfile = 'pelican_config';
+                taskparams.platforms(i).configfile = 'Pelican_config_no_obstacles';
             end
         end 
         

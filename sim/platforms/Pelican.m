@@ -360,7 +360,7 @@ classdef Pelican<Steppable & Platform
                         px= obj.simState.platforms{i}.X(1); 
                         py= obj.simState.platforms{i}.X(2); 
                         pz= obj.simState.platforms{i}.X(3); 
-                        obj.simState.platforms{i}.setX([px; py; pz; 0; 0; 0]);
+                        obj.simState.platforms{i}.setX([px; py; 0; 0; 0; 0]);
                     end
                 end
             end

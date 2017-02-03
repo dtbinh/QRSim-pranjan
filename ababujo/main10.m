@@ -16,7 +16,7 @@ qrsim = QRSim();
 state = qrsim.init('TaskKeepSpot10_ababujo');
 
 % number of steps we run the simulation for
-N = 200;
+N = 900;
 
 wp = zeros(3,10);
 pids = cell(10,1);

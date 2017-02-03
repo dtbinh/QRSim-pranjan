@@ -100,7 +100,7 @@ classdef TaskGotoWP<Task
             
             %%%%% platforms %%%%%
             % Configuration and initial state for each of the platforms
-            taskparams.platforms(1).configfile = 'pelican_config_no_obstacles';
+            taskparams.platforms(1).configfile = 'Pelican_config_no_obstacles';
             
         end
         
@@ -154,6 +154,13 @@ classdef TaskGotoWP<Task
         function setWP(obj,wp)
             % sets the task waypoint
             obj.wp = wp;
+        end
+        
+        %ababujo: added the Step function
+        function UU = step(obj,U)
+            % translate from task inputs to platforms inputs,
+            % in these simple task they are the same
+            UU = U;
         end
     end
     
