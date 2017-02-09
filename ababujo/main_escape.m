@@ -1,5 +1,5 @@
-% bare bones example of use of the QRSim() simulator object with one
-% helicopter
+% ababujo: Modified main to build and to escape obstacle, given the task to
+% go to multiple waypoints one after the other
 
 clear all
 close all
@@ -13,7 +13,7 @@ addpath(['..',filesep,'controllers']);
 qrsim = QRSim();
 
 % load task parameters and do housekeeping
-state = qrsim.init('TaskKeepSpot');
+state = qrsim.init('TaskEscape');
 
 % number of steps we run the simulation for
 N = 3000;
@@ -23,12 +23,15 @@ N = 3000;
 %for k=1:size(wp,1)
  %   wp(k,:) = state.platforms{1}.getX(1:3)+ [k;2*k;2.5*k]; 
 %end
+global wp;
 wp = [0 0 -10;4 4 -7; 9 -2 -10];
 
 % creat PID controller omainbject
-pid = WaypointPID_ababujo(state.DT);
+global pid;
+pid = WaypointPID(state.DT);
 
 tstart = tic;
+global k;
 k=1;
 
 for i=1:N,
@@ -36,24 +39,6 @@ for i=1:N,
     % one should always make sure that the uav is valid
     % i.e. no collision or out of area event happened
  
-    disp(state.platforms{1}.obstacles);
-    [obsx,obsy,obsz] = state.platforms{1}.obstacleCheck();
-    if(state.platforms{1}.obstacleCheck())
-            if(~(obsx==state.platforms{1}.getX(1)))
-                wp(k,1) = obsx;
-            end
-            if(~(obsy==state.platforms{1}.getX(2)))
-                wp(k,2) = obsy;
-            end
-            if(~(obsz==state.platforms{1}.getX(3)))
-                wp(k,3) = obsz;
-            end
-                
-            U = pid.computeU(state.platforms{1}.getX(),wp(k,:)',0);
-            %U = [0;0.02;0.595;0;12];
-            % step simulator
-            qrsim.step(U);
-    end
     if(state.platforms{1}.isValid())
             % compute controls
             U = pid.computeU(state.platforms{1}.getX(),wp(k,:)',0);

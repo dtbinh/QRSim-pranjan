@@ -185,8 +185,13 @@ classdef QRSim<handle
                 UfromTask = obj.simState.task.step(U);
                 if(~isempty(UfromTask))
                     UU = UfromTask;
+                    
                 else
                     UU = U;
+                end
+                
+                if(~(UfromTask == U))
+                    step(obj,UU);
                 end
                 
                 % step all the platforms given UU

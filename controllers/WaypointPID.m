@@ -43,7 +43,7 @@ classdef WaypointPID<handle
             obj.wp = [0;0;0];
         end
         
-        function U = computeU(obj,X,wp,desPsi)
+        function U = computeU(obj,X, wp,desPsi)
             %
             %  Computes the quadtotor control signals given the current state and a desired waypoint
             %
