@@ -66,7 +66,7 @@ for i=1:N,
     pause(wait);
         
     %ababujo: If the current waypoint is reached go to next
-    if(norm(wp(k,:)'-state.platforms{1}.getX(1:3))< 0.3)
+    if(norm(wp(k,:)'-state.platforms{1}.getX(1:3))< 0.5)
         if((k<size(wp,1)) && (k>1))
             k = k+1;
         end

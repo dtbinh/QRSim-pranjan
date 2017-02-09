@@ -67,10 +67,10 @@ classdef TaskKeepSpot10_ababujo<Task
             
             %ababujo:obstacles{Column - X Y Z(h) r}
             
-            taskparams.environment.area.obstacles = [ -70 50 
-                                                        0 0 
-                                                        -10 -10 
-                                                        5 5];
+            %taskparams.environment.area.obstacles = [ -70 50 
+             %                                           0 0 
+              %                                          -10 -10 
+               %                                         5 5];
           
             % GPS
             % The space segment of the gps system

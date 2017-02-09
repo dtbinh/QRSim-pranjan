@@ -542,7 +542,7 @@ classdef Pelican<Steppable & Platform
             %  class and should not be called directly.
             %
             
-            if((obj.valid)||(obj.obstacleCheck()))
+            if(obj.valid)
                 
                 % do scaling of inputs
                 US = obj.scaleControls(U);
@@ -569,7 +569,7 @@ classdef Pelican<Steppable & Platform
                 [obj.X obj.a] = ruku2('pelicanODE', obj.X, [US;meanWind + turbWind; obj.MASS; accNoise], obj.dt);
                 
                 %ababujo: adding additional check for obstacles
-                if(isreal(obj.X)&& obj.thisStateIsWithinLimits(obj.X) && ~obj.inCollision() && ~obj.obstacleCheck())
+                if(isreal(obj.X)&& obj.thisStateIsWithinLimits(obj.X) && ~obj.inCollision() )
                     
                     % AHARS
                     obj.ahars.step([obj.X;obj.a]);
