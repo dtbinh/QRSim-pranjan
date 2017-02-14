@@ -17,8 +17,10 @@ state = qrsim.init('TaskKeepSpot10_ababujo');
 
 % number of steps we run the simulation for
 N = 900;
-
+global wp;
 wp = zeros(3,10);
+
+global pids;
 pids = cell(10,1);
 
 for i=1:10

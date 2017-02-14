@@ -159,6 +159,32 @@ classdef TaskKeepSpot10_ababujo<Task
                 r = - obj.PENALTY;
             end                
         end 
+        function UU = step(obj,U)
+            % translate from task inputs to platforms inputs,
+            % in these simple task they are the same
+            
+            %ababujo: Adding code to execute obstacle/collision avoidance
+            % on a per-UAV basis rather than doing it in the main
+            UU = U;
+            global pids;
+            global wp;
+            
+            for i=1:length(obj.simState.platforms)-1,
+                if(obj.simState.platforms{i} ~= obj)
+                    if(norm(obj.simState.platforms{i}.getX(1:3)-obj.simState.platforms{i+1}.getX(1:3))< obj.simState.platforms{i}.collisionD)
+                            fprintf('Removing the colliding uavs');
+                            wp(1,i)= obj.simState.platforms{i}.getX(1); 
+                            wp(2,i)= obj.simState.platforms{i}.getX(2); 
+                            wp(3,i)=0;
+                            UU(:,i) = pids{i}.computeU(obj.simState.platforms{i}.getX(),wp(:,i),0);
+                    end
+                end
+            end
+                 
+        end
+            
+            
+        
     end
     
 end

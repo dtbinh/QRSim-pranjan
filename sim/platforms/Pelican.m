@@ -457,16 +457,7 @@ classdef Pelican<Steppable & Platform
             for i=1:length(obj.simState.platforms),
                 if(obj.simState.platforms{i} ~= obj)
                     if(norm(obj.simState.platforms{i}.X(1:3)-obj.X(1:3))< obj.collisionD)
-                        %coll = 1;
-                        fprintf('Removing the colliding uavs');
-                        px= obj.simState.platforms{i}.X(1); 
-                        py= obj.simState.platforms{i}.X(2); 
-                        %pz= obj.simState.platforms{i}.X(3); 
-                        obj.simState.platforms{i}.setX([px; py; 0; 0; 0; 0]);
-                        rx= obj.X(1); 
-                        ry= obj.X(2); 
-                        %pz= obj.simState.platforms{i}.X(3); 
-                        obj.setX([rx; ry; 0; 0; 0; 0]);
+                        coll = 1;
                     end
                 end
             end
@@ -480,13 +471,13 @@ classdef Pelican<Steppable & Platform
             else
                 if(strcmp(obj.behaviourIfStateNotValid,'error'))
                     if(obj.inCollision())
-                        error('platform state not valid, in collision!\n');
+                        fprintf('platform state not valid, in collision!\n');
                     else
                         error('platform state not valid, values out of bounds!\n');
                     end
                 else
                     if(obj.inCollision())
-                        error(['warning: platform state not valid, in collision!\n Normally this should not happen; ',...
+                        fprintf(['warning: platform state not valid, in collision!\n Normally this should not happen; ',...
                             'however if you think this is fine and you want to stop this warning use the task parameter behaviourIfStateNotValid\n']);
                     else
                         if(obj.obstacleCheck())
@@ -569,8 +560,8 @@ classdef Pelican<Steppable & Platform
                 [obj.X obj.a] = ruku2('pelicanODE', obj.X, [US;meanWind + turbWind; obj.MASS; accNoise], obj.dt);
                 
                 %ababujo: adding additional check for obstacles
-                if(isreal(obj.X)&& obj.thisStateIsWithinLimits(obj.X) && ~obj.inCollision() )
-                    
+                %if(isreal(obj.X)&& obj.thisStateIsWithinLimits(obj.X) && ~obj.inCollision() && ~obj.obstacleCheck() )
+                if(isreal(obj.X)&& obj.thisStateIsWithinLimits(obj.X) )
                     % AHARS
                     obj.ahars.step([obj.X;obj.a]);
                     
