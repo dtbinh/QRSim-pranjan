@@ -10,10 +10,11 @@ classdef TaskTrial<Task
     
     properties (Constant)
         durationInSteps = 1000;
-        N1 = 1;             % number of drones without any obstacle sensing capability
-        N2 = 1;             % number of drones with the ability to sense anything in the radius of 10f
-        N3 = 1;             % number of drones with the ability to sense anything in the radius of 5f
-        %N4 = 2;             % number of drones with 
+        N1 = 1;             % drones without any obstacle sensing capability
+        N2 = 1;             % drones with the ability to sense anything in the radius of 10f
+        N3 = 1;             % drones with the ability to sense anything in the radius of 5f
+        N4 = 1;             % drones when sensing another drone carries straight on assuming the other drones would change its route
+        N5 = 1;             % drones when sensing another drone tries to fly above it.
         hfix = 15;           % fix flight altitude
         PENALTY = 1000;      % penalty reward in case of collision
     end
@@ -22,7 +23,8 @@ classdef TaskTrial<Task
         initialX; % initial state of the uavs
         prngId;   % id of the prng stream used to select the initial positions
         PIDs;  % pid used to control the uavs
-        f;  % flags to denote sensor picking up something on its radar
+        f;  % flags to denote sensor picking up some obstacle on its radar
+        d;  % flags to denote sensor picking up some other drone on its radar
     end
     
     methods (Sealed,Access=public)
@@ -120,6 +122,14 @@ classdef TaskTrial<Task
                 taskparams.platforms(j).configfile = 'Detect5_config';
                 j =j+1;
             end
+            for i=1:obj.N4,
+                taskparams.platforms(j).configfile = 'Detect5_config';
+                j =j+1;
+            end
+            for i=1:obj.N5,
+                taskparams.platforms(j).configfile = 'Detect5_config';
+                j =j+1;
+            end
             
             % get hold of a prng stream
             obj.prngId = obj.simState.numRStreams+1;
@@ -134,18 +144,35 @@ classdef TaskTrial<Task
                 obj.simState.platforms{j}.setX([30;-30+15*i;-obj.hfix;0;0;0]);
                 obj.PIDs{j} = VelocityPID(obj.simState.DT);
                 obj.f{j} = 0;
+                obj.d{j} = 0;
                 j = j+1;
             end
             for i=1:obj.N2,
                 obj.simState.platforms{j}.setX([30;0+15*i;-obj.hfix;0;0;0]);
                 obj.PIDs{j} = VelocityPID(obj.simState.DT);
                 obj.f{j} = 0;
+                obj.d{j} = 0;
                 j = j+1;
             end
             for i=1:obj.N3,
                 obj.simState.platforms{j}.setX([30;30+15*i;-obj.hfix;0;0;0]);
                 obj.PIDs{j} = WaypointPID(obj.simState.DT);
                 obj.f{j} = 0;
+                obj.d{j} = 0;
+                j =j+1;
+            end
+            for i=1:obj.N4,
+                obj.simState.platforms{j}.setX([-50;30+15*i;-obj.hfix;0;0;0]);
+                obj.PIDs{j} = WaypointPID(obj.simState.DT);
+                obj.f{j} = 0;
+                obj.d{j} = 0;
+                j =j+1;
+            end
+            for i=1:obj.N5,
+                obj.simState.platforms{j}.setX([-50;-30+15*i;-obj.hfix;0;0;0]);
+                obj.PIDs{j} = WaypointPID(obj.simState.DT);
+                obj.f{j} = 0;
+                obj.d{j} = 0;
                 j =j+1;
             end
         end
@@ -154,7 +181,7 @@ classdef TaskTrial<Task
         % with each other and also to other dronee, obstacles, etc..
         function UU = step(obj,U)
             
-            N = obj.N1 + obj.N2 + obj.N3;
+            N = obj.N1 + obj.N2 + obj.N3 + obj.N4;
             UU = zeros(5,N); 
             j = 1;
             ob = obj.simState.platforms{j}.ObDetect();
@@ -169,7 +196,7 @@ classdef TaskTrial<Task
             end
             for i=1:obj.N2,
                 if(obj.simState.platforms{j}.isValid())
-                    if(obj.f{j}==1)
+                    if((obj.f{j}==1)||(obj.d{j}==1))
                         UU(:,j) = obj.PIDs{j}.computeU(obj.simState.platforms{j}.getX(),[2;0;0],0);
                     else
                         UU(:,j) = obj.PIDs{j}.computeU(obj.simState.platforms{j}.getX(),U(:,j),0);
@@ -181,8 +208,34 @@ classdef TaskTrial<Task
             end
             for i=1:obj.N3,
                 if(obj.simState.platforms{j}.isValid())
-                    if(obj.f{j}==1)
+                    if((obj.f{j}==1)||(obj.d{j}==1))
                         UU(:,j) = obj.PIDs{j}.computeU(obj.simState.platforms{j}.getX(),obj.simState.platforms{j}.getX(1:3),0);
+                    else
+                            UU(:,j) = obj.PIDs{j}.computeU(obj.simState.platforms{j}.getX(),U(:,j),0);
+                    end
+                else
+                    UU(:,j) = obj.PIDs{j}.computeU(obj.simState.platforms{j}.getX(),[0;35;-10],0);
+                end
+                j = j+1;
+            end
+            for i=1:obj.N4,
+                if(obj.simState.platforms{j}.isValid())
+                    
+                        UU(:,j) = obj.PIDs{j}.computeU(obj.simState.platforms{j}.getX(),U(:,j),0);
+                else
+                    UU(:,j) = obj.PIDs{j}.computeU(obj.simState.platforms{j}.getX(),[0;35;-10],0);
+                end
+                j = j+1;
+            end
+            for i=1:obj.N5,
+                if(obj.simState.platforms{j}.isValid())
+                    if((obj.f{j}==1)||(obj.d{j}==1))
+                            obj.d{j} = 0;
+                            obj.f{j} = 0;
+                            x = U(1,j);
+                            y = U(2,j);
+                            z = U(3,j)-5;
+                            UU(:,j) = obj.PIDs{j}.computeU(obj.simState.platforms{j}.getX(),[x;y;z],0);
                     else
                             UU(:,j) = obj.PIDs{j}.computeU(obj.simState.platforms{j}.getX(),U(:,j),0);
                     end
