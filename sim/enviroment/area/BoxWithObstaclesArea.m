@@ -12,9 +12,9 @@ classdef BoxWithObstaclesArea<Area
     
     properties(Access=public)
         obstacles = [ 0     0   0
-                      -30    -10   30
-                      20   -20 -20
-                      5     5   5 ];
+                      -35    0   40
+                      -20   -20 -20
+                     7     7   5 ];
     end
     
     methods (Sealed,Access=public)
