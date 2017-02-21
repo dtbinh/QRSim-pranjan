@@ -49,10 +49,6 @@ classdef Pelican<Steppable & Platform
         G = 9.81;    %  gravity m/s^2
         MASS = 1.68; %  mass of the platform Kg
         labels = {'px','py','pz','phi','theta','psi','u','v','w','p','q','r','thrust'};
-        obstacles = [ 5 15 
-                                                        0 0 
-                                                        -10 -5 
-                                                        3 2];
     end
     
     properties (Access = protected)
@@ -64,16 +60,13 @@ classdef Pelican<Steppable & Platform
         collisionD;  % distance from any other object that defines a collision
         dynNoise;    % standard deviation of the noise dynamics
         behaviourIfStateNotValid = 'warning'; % what to do when the state is not valid
-                                            % ababujo changed 'warning' to
-                                            %'error'
         prngIds;     %ids of the prng stream used by this object
         stateLimits; % 13 by 2 vector of allowed values of the state
         X;           % state [px;py;pz;phi;theta;psi;u;v;w;p;q;r;thrust]
         eX;          % estimated state  [~px;~py;~pz;~phi;~theta;~psi;0;0;0;~p;~q;~r;0;~ax;~ay;~az;~h;~pxdot;~pydot;~hdot]
         valid;       % the state of the platform is invalid
         graphicsOn;  % true if graphics is on
-        
-          ;
+        senseDistance;  %ababujo: Added to change the capability to sense an obstacle or other drone
     end
     
     methods (Access = public)
@@ -242,109 +235,7 @@ classdef Pelican<Steppable & Platform
             % true if the state is valid
             iv = obj.valid;
         end
-               %ababujo: Obstacle Check
         
-        function [obsx,obsy,obsz] = obstacleCheck(obj)
-            % returns 1 if its near an obstacle
-            obsx = 0;
-            obsy = 0;
-            obsz = 0;
-            for i = 1: length(obj.simState.platforms),
-                for j = 1: size(obj.obstacles,2)
-                    if(((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
-                          (obj.simState.platforms{i}.X(2) - obj.obstacles(2,j))^2 + ...
-                          (obj.simState.platforms{i}.X(3) - (obj.obstacles(3,j)/2))^2)^0.5 < obj.collisionD) 
-                        obsx = obj.simState.platforms{i}.X(1) - obj.obstacles(4,j) ;
-                        obsy = obj.simState.platforms{i}.X(2);
-                        obsz = obj.simState.platforms{i}.X(3);
-                        fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
-                        break;
-                    end
-                    if(((obj.simState.platforms{i}.X(1) - (obj.obstacles(1,j)+ obj.obstacles(4,j)))^2 + ...
-                          (obj.simState.platforms{i}.X(2) - obj.obstacles(2,j))^2 + ...
-                          (obj.simState.platforms{i}.X(3) - (obj.obstacles(3,j)/2))^2)^0.5 < obj.collisionD)
-                      obsx = obj.simState.platforms{i}.X(1) + obj.obstacles(4,j) ;
-                        obsy = obj.simState.platforms{i}.X(2);
-                        obsz = obj.simState.platforms{i}.X(3);
-                        fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
-                        break;
-                    end
-                    if(((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
-                          (obj.simState.platforms{i}.X(2) - (obj.obstacles(2,j)+ obj.obstacles(4,j)))^2 + ...
-                          (obj.simState.platforms{i}.X(3) - (obj.obstacles(3,j)/2))^2)^0.5 < obj.collisionD)
-                      obsy = obj.simState.platforms{i}.X(2) + obj.obstacles(4,j) ;
-                      obsx = obj.simState.platforms{i}.X(1);
-                      obsz = obj.simState.platforms{i}.X(3);
-                      fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
-                      break;
-                    end
-                    if(((obj.simState.platforms{i}.X(1) - (obj.obstacles(1,j) - obj.obstacles(4,j)))^2 + ...
-                          (obj.simState.platforms{i}.X(2) - obj.obstacles(2,j))^2 + ...
-                          (obj.simState.platforms{i}.X(3) - (obj.obstacles(3,j)/2))^2)^0.5 < obj.collisionD)
-                      obsx = obj.simState.platforms{i}.X(1) - obj.obstacles(4,j) ;
-                      obsy = obj.simState.platforms{i}.X(2);
-                      obsz = obj.simState.platforms{i}.X(3);
-                      fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
-                      break;
-                    end
-                    if(((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
-                          (obj.simState.platforms{i}.X(2) - (obj.obstacles(2,j) - obj.obstacles(4,j)))^2 + ...
-                          (obj.simState.platforms{i}.X(3) - (obj.obstacles(3,j)/2))^2)^0.5 < obj.collisionD)
-                      obsy = obj.simState.platforms{i}.X(2) - obj.obstacles(4,j) ;
-                      obsx = obj.simState.platforms{i}.X(1);
-                      obsz = obj.simState.platforms{i}.X(3);
-                      fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
-                      break;
-                    end
-                    if(((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
-                          (obj.simState.platforms{i}.X(2) - obj.obstacles(2,j))^2 + ...
-                          (obj.simState.platforms{i}.X(3) - obj.obstacles(3,j))^2)^0.5 < obj.collisionD) 
-                        obsx = obj.simState.platforms{i}.X(1) - obj.obstacles(4,j) ;
-                        obsy = obj.simState.platforms{i}.X(2);
-                        obsz = obj.simState.platforms{i}.X(3);
-                        fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
-                        break;
-                    end
-                    if(((obj.simState.platforms{i}.X(1) - (obj.obstacles(1,j)+ obj.obstacles(4,j)))^2 + ...
-                          (obj.simState.platforms{i}.X(2) - obj.obstacles(2,j))^2 + ...
-                          (obj.simState.platforms{i}.X(3) - obj.obstacles(3,j))^2)^0.5 < obj.collisionD)
-                      obsx = obj.simState.platforms{i}.X(1) + obj.obstacles(4,j) ;
-                        obsy = obj.simState.platforms{i}.X(2);
-                        obsz = obj.simState.platforms{i}.X(3);
-                        fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
-                    end
-                    if(((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
-                          (obj.simState.platforms{i}.X(2) - (obj.obstacles(2,j)+ obj.obstacles(4,j)))^2 + ...
-                          (obj.simState.platforms{i}.X(3) - obj.obstacles(3,j))^2)^0.5 < obj.collisionD)
-                      obsy = obj.simState.platforms{i}.X(2) + obj.obstacles(4,j) ;
-                      obsx = obj.simState.platforms{i}.X(1);
-                      obsz = obj.simState.platforms{i}.X(3);
-                      fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
-                      break;
-                    end
-                    if(((obj.simState.platforms{i}.X(1) - (obj.obstacles(1,j) - obj.obstacles(4,j)))^2 + ...
-                          (obj.simState.platforms{i}.X(2) - obj.obstacles(2,j))^2 + ...
-                          (obj.simState.platforms{i}.X(3) - obj.obstacles(3,j)/2)^2)^0.5 < obj.collisionD)
-                      obsx = obj.simState.platforms{i}.X(1) - obj.obstacles(4,j) ;
-                      obsy = obj.simState.platforms{i}.X(2);
-                      obsz = obj.simState.platforms{i}.X(3);
-                      fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
-                      break;
-                    end
-                    if(((obj.simState.platforms{i}.X(1) - obj.obstacles(1,j))^2 + ...
-                          (obj.simState.platforms{i}.X(2) - (obj.obstacles(2,j) - obj.obstacles(4,j)))^2 + ...
-                          (obj.simState.platforms{i}.X(3) - obj.obstacles(3,j))^2)^0.5 < obj.collisionD)
-                      obsy = obj.simState.platforms{i}.X(2) - obj.obstacles(4,j) ;
-                      obsx = obj.simState.platforms{i}.X(1);
-                      obsz = obj.simState.platforms{i}.X(3);
-                      fprintf('The UAV %d is too close to the obstacle %d\n',i,j);
-                      break;
-                    end
-                            
-                    
-                end
-            end
-        end
         function obj = setX(obj,X)
             % reinitialise the current state and noise
             %
@@ -394,7 +285,6 @@ classdef Pelican<Steppable & Platform
                 estimatedAHA(4:6);0;estimatedAHA(7:10);estimatedPosNED(4:5);estimatedAHA(11)];
             
             obj.valid = 1;
-            %obj.coll = 0;
             
             % clean the trajectory plot if any
             if(obj.graphicsOn)
@@ -410,7 +300,7 @@ classdef Pelican<Steppable & Platform
             % Example:
             %   obj.reset();
             %
-            assert(false,'pelican:reset',['A platform ca not be simply reset since that would its state undefined',...
+            assert(false,'pelican:rset',['A platform ca not be simply reset since that would its state undefined',...
                 ' use setX instead, that will take care of resetting what necessary']);
         end
         
@@ -462,7 +352,6 @@ classdef Pelican<Steppable & Platform
                 end
             end
         end
-       
         
         function obj = printStateNotValidError(obj)
             % display state error info
@@ -471,7 +360,7 @@ classdef Pelican<Steppable & Platform
             else
                 if(strcmp(obj.behaviourIfStateNotValid,'error'))
                     if(obj.inCollision())
-                        fprintf('platform state not valid, in collision!\n');
+                        error('platform state not valid, in collision!\n');
                     else
                         error('platform state not valid, values out of bounds!\n');
                     end
@@ -480,30 +369,21 @@ classdef Pelican<Steppable & Platform
                         fprintf(['warning: platform state not valid, in collision!\n Normally this should not happen; ',...
                             'however if you think this is fine and you want to stop this warning use the task parameter behaviourIfStateNotValid\n']);
                     else
-                        if(obj.obstacleCheck())
-                             %ababujo: including obstacle check
-                            fprintf('Platform state not valid, in collision with an obstacle!\n');
-                        else
-                            
-                            ids = (obj.X(1:12) < obj.stateLimits(:,1)) | (obj.X(1:12) > obj.stateLimits(:,2));
-                            problematics = '';
-                            for k=1:size(ids)
-                                if(ids(k))
-                                    problematics = [problematics,',',obj.labels{k}]; %#ok<AGROW>
-                                end
+                        ids = (obj.X(1:12) < obj.stateLimits(:,1)) | (obj.X(1:12) > obj.stateLimits(:,2));
+                        problematics = '';
+                        for k=1:size(ids)
+                            if(ids(k))
+                                problematics = [problematics,',',obj.labels{k}]; %#ok<AGROW>
                             end
-                            fprintf(['warning: platform state not valid, values out of bounds (',problematics,')!\n',num2str(obj.X'),'\nNormally this should not happen; ',...
-                                'however if you think this is fine and you want to stop this warning use the task parameter behaviourIfStateNotValid\n']);
                         end
-                  
+                        fprintf(['warning: platform state not valid, values out of bounds (',problematics,')!\n',num2str(obj.X'),'\nNormally this should not happen; ',...
+                            'however if you think this is fine and you want to stop this warning use the task parameter behaviourIfStateNotValid\n']);
                     end
                 end
-            
             end
         end
-        
-
-    end    
+    end
+    
     methods (Access=protected)
         
         function obj=resetAdditional(obj)
@@ -559,9 +439,8 @@ classdef Pelican<Steppable & Platform
                 % dynamics
                 [obj.X obj.a] = ruku2('pelicanODE', obj.X, [US;meanWind + turbWind; obj.MASS; accNoise], obj.dt);
                 
-                %ababujo: adding additional check for obstacles
-                %if(isreal(obj.X)&& obj.thisStateIsWithinLimits(obj.X) && ~obj.inCollision() && ~obj.obstacleCheck() )
-                if(isreal(obj.X)&& obj.thisStateIsWithinLimits(obj.X) )
+                if(isreal(obj.X)&& obj.thisStateIsWithinLimits(obj.X) && ~obj.inCollision())
+                    
                     % AHARS
                     obj.ahars.step([obj.X;obj.a]);
                     
@@ -595,4 +474,3 @@ classdef Pelican<Steppable & Platform
         end        
     end
 end
-

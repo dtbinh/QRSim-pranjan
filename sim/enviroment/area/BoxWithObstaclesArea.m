@@ -10,6 +10,13 @@ classdef BoxWithObstaclesArea<Area
     %    isGraphicsOn()       - returns true if there is a graphics objec associate with the area
     %
     
+    properties(Access=public)
+        obstacles = [ 0     0   0
+                      -30    -10   30
+                      20   -20 -20
+                      5     5   5 ];
+    end
+    
     methods (Sealed,Access=public)
         function obj = BoxWithObstaclesArea(objparams)
             % constructs the object

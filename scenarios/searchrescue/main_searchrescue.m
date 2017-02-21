@@ -26,7 +26,7 @@ qrsim = QRSim();
 state = qrsim.init('TaskSearchRescueSingleNoiseless');
 %state = qrsim.init('TaskSearchRescueSingleNoisy');
 %state = qrsim.init('TaskSearchRescueMultipleNoiseless');
-%state = qrsim.init('TaskSearchRescueMultipleNoisyAndWindy');
+%state = qrsim.init('TaskSesarchRescueMultipleNoisyAndWindy');
 
 
 % create a 3 x helicopters matrix of control inputs

@@ -190,9 +190,10 @@ classdef QRSim<handle
                     UU = U;
                 end
                 
-                if(~(UfromTask == U))
-                    step(obj,UU);
-                end
+                %ababujo: added this to check updates from the task
+                %if(~(UfromTask == U))
+                 %   step(obj,UU);
+                %end
                 
                 % step all the platforms given UU
                 assert(size(obj.simState.platforms,2)==size(UU,2),'qrsim:wronginputsize',...
