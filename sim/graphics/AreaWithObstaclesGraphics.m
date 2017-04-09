@@ -106,6 +106,11 @@ classdef AreaWithObstaclesGraphics<handle
                 set(objparams.state.display3d.obstacle(i),'FaceAlpha',0.7,'EdgeAlpha',1);
             end
             
+            %Creating Plume
+            [x,y,z] = sphere;
+            
+            surf(20*x+40,20*y+50,20*z-20)
+            
             %invert axis to be coherent with NED
             set(gca,'ZDir','rev');
             set(gca,'YDir','rev');

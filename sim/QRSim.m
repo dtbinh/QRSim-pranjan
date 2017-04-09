@@ -192,7 +192,7 @@ classdef QRSim<handle
                 
                 %ababujo: added this to check updates from the task
                 %if(~(UfromTask == U))
-                 %   step(obj,UU);
+                %    step(obj,UU);
                 %end
                 
                 % step all the platforms given UU

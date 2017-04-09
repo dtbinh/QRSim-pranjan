@@ -66,7 +66,7 @@ classdef Pelican<Steppable & Platform
         eX;          % estimated state  [~px;~py;~pz;~phi;~theta;~psi;0;0;0;~p;~q;~r;0;~ax;~ay;~az;~h;~pxdot;~pydot;~hdot]
         valid;       % the state of the platform is invalid
         graphicsOn;  % true if graphics is on
-        senseDistance;  %ababujo: Added to change the capability to sense an obstacle or other drone
+        senseD;  % ababujo: Added to change the capability to sense an obstacle or other drone
     end
     
     methods (Access = public)
@@ -103,7 +103,7 @@ classdef Pelican<Steppable & Platform
             assert(isfield(objparams,'collisionDistance'),'pelican:nocollisiondistance',...
                 'the platform config file must define the collisionDistance parameter');
             obj.collisionD = objparams.collisionDistance;
-            
+            obj.senseD = objparams.senseDistance;
             assert(isfield(objparams,'dynNoise'),'pelican:nodynnoise',...
                 'the platform config file must define the dynNoise parameter');
             obj.dynNoise = objparams.dynNoise;
@@ -308,6 +308,53 @@ classdef Pelican<Steppable & Platform
             % returns collision distance
             d = obj.collisionD;
         end
+        
+        function d = getSensingDistance(obj)
+            % ababujo: returns the distance uptp which this platform can sense
+            d = obj.senseD;
+        end
+        
+        function ob = PlumeDetect(obj)
+            % ababujo: Global code if this platform detects any obstacle or
+            % other drone in its sensing distance
+            ob = 0 ;
+            for j=1:length(obj.simState.platforms),
+                x = obj.simState.platforms{j}.X(1);
+                y = obj.simState.platforms{j}.X(2);
+                z = obj.simState.platforms{j}.X(3);
+                
+                xp = obj.simState.environment.area.obstacles(1,1);
+                yp = obj.simState.environment.area.obstacles(2,1);
+                zp = obj.simState.environment.area.obstacles(3,1);
+                r = obj.simState.environment.area.obstacles(4,1);
+                if(sqrt(((xp-x)*(xp-x)) + ((yp-y)*(yp-y)) + ((zp-z)*(zp-z)))<r)
+                    obj.simState.task.p{j} = 1;
+                end
+            end
+        end   
+        
+        function ob = ObDetect(obj)
+            % ababujo: Global code if this platform detects any obstacle or
+            % other drone in its sensing distance
+            ob = 0 ;
+            for j=1:length(obj.simState.platforms),
+                for p=1:size(obj.simState.environment.area.obstacles,2),
+                    if(abs(abs(obj.simState.environment.area.obstacles(1,p))-abs(obj.simState.platforms{j}.X(1))) < obj.simState.platforms{j}.getSensingDistance())
+                        obj.simState.task.f{j} = 1;
+                        ob = 1;
+                    end
+                end
+                for i=1:length(obj.simState.platforms),
+                    if(obj.simState.platforms{i} ~= obj.simState.platforms{j})
+                        if(norm(obj.simState.platforms{i}.X(1:3)-obj.simState.platforms{j}.X(1:3))< obj.simState.platforms{j}.getSensingDistance())
+                            obj.simState.task.d{j} = 1;
+                            ob = 1;
+                        end
+                    end
+                end
+            end    
+        end            
+        
     end
     
     methods (Sealed,Access=protected)
@@ -338,20 +385,52 @@ classdef Pelican<Steppable & Platform
             to = min(size(X,1),size(obj.stateLimits,1));
             
             valid = all(X(1:to)>=obj.stateLimits(1:to,1)) && all(X(1:to)<=obj.stateLimits(1:to,2));
+            
 
         end
         
+        %ababujo: Incollision: We dont want to discard all the platforms if there is a
+        % collision, but just bring the drone down to the ground
         function coll = inCollision(obj)
             % returns 1 if a collision is occourring
             coll = 0;
             for i=1:length(obj.simState.platforms),
-                if(obj.simState.platforms{i} ~= obj)
-                    if(norm(obj.simState.platforms{i}.X(1:3)-obj.X(1:3))< obj.collisionD)
-                        coll = 1;
+                
+                for j=1:length(obj.simState.platforms),
+                    if(obj.simState.platforms{i} ~= obj.simState.platforms{j})
+                        if(norm(obj.simState.platforms{i}.X(1:3)-obj.simState.platforms{j}.X(1:3))< obj.simState.platforms{j}.getCollisionDistance())
+                            coll = 1;
+                            fprintf('%d\n',obj.simState.platforms{j}.X(1:3));
+                            fprintf('Platform %d too close to another platform\n',j);
+                            x = obj.simState.platforms{j}.X(1);
+                            y = obj.simState.platforms{j}.X(2);
+                            z = 0;
+                            obj.simState.platforms{j}.setX([x;y;z;obj.simState.platforms{j}.X(4:6)]);
+                        end
                     end
                 end
+                for p=1:size(obj.simState.environment.area.obstacles,2),
+                    if(abs(abs(obj.simState.environment.area.obstacles(1:2,p))-abs(obj.simState.platforms{i}.X(1:2))) < obj.simState.platforms{i}.getCollisionDistance())
+                        coll = 1;
+                        fprintf('%d\n',obj.simState.platforms{i}.X(1:3));
+                        fprintf('Platform %d colliding with obstacle %d\n',i,p);
+                        x = obj.simState.platforms{i}.getX(1);
+                        y = obj.simState.platforms{i}.getX(2);
+                        z = 0;
+                        obj.simState.platforms{i}.valid=0;
+                       % obj.simState.platforms{i}.setX([x;y;z;obj.simState.platforms{i}.getX(4:6)]);
+                        break;
+                    end
+                end
+            
             end
         end
+        
+        function obj = plumedetect(obj)
+           
+                
+        end
+        
         
         function obj = printStateNotValidError(obj)
             % display state error info
@@ -360,14 +439,13 @@ classdef Pelican<Steppable & Platform
             else
                 if(strcmp(obj.behaviourIfStateNotValid,'error'))
                     if(obj.inCollision())
-                        error('platform state not valid, in collision!\n');
+                        fprintf('platform state not valid, in collision!\n');
                     else
-                        error('platform state not valid, values out of bounds!\n');
+                        fprintf('platform state not valid, values out of bounds!\n');
                     end
                 else
                     if(obj.inCollision())
-                        fprintf(['warning: platform state not valid, in collision!\n Normally this should not happen; ',...
-                            'however if you think this is fine and you want to stop this warning use the task parameter behaviourIfStateNotValid\n']);
+                        fprintf('warning: platform state not valid, in collision!');
                     else
                         ids = (obj.X(1:12) < obj.stateLimits(:,1)) | (obj.X(1:12) > obj.stateLimits(:,2));
                         problematics = '';
@@ -439,8 +517,17 @@ classdef Pelican<Steppable & Platform
                 % dynamics
                 [obj.X obj.a] = ruku2('pelicanODE', obj.X, [US;meanWind + turbWind; obj.MASS; accNoise], obj.dt);
                 
-                if(isreal(obj.X)&& obj.thisStateIsWithinLimits(obj.X) && ~obj.inCollision())
+                %if(isreal(obj.X)&& obj.thisStateIsWithinLimits(obj.X) && ~obj.inCollision())
+                if(isreal(obj.X)&& obj.thisStateIsWithinLimits(obj.X) )
+                    %ababujo:brought incollision check inside, as we dont
+                    %want to discard all the platforms if there is a
+                    %collision, but just bring the drone down to the ground
+                    if(obj.inCollision())
+                       % obj.eX = nan(20,1);
+                        %obj.valid=0;
                     
+                        obj.printStateNotValidError();
+                    end
                     % AHARS
                     obj.ahars.step([obj.X;obj.a]);
                     

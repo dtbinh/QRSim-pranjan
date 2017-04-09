@@ -9,7 +9,7 @@ classdef TaskTrial<Task
     % turned off.
     
     properties (Constant)
-        durationInSteps = 1000;
+        durationInSteps = 250;
         N1 = 1;             % drones without any obstacle sensing capability
         N2 = 1;             % drones with the ability to sense anything in the radius of 10f
         N3 = 1;             % drones with the ability to sense anything in the radius of 5f
@@ -71,9 +71,9 @@ classdef TaskTrial<Task
              %ababujo:obstacles{Column - X Y Z(h) r}
            % taskparams.environment.area.obstacles = taskparams.environment.area.type.obstacles;
            taskparams.environment.area.obstacles = [ 0     0   0
-                                                     -15    0   40
+                                                     -35    0   30
                                                      -20   -20 -20
-                                                      7     7   5 ];
+                                                      7     7   7 ];
             
             % GPS
             % The space segment of the gps system

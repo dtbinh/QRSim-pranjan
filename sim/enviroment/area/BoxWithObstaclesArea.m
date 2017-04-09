@@ -11,10 +11,11 @@ classdef BoxWithObstaclesArea<Area
     %
     
     properties(Access=public)
-        obstacles = [ 0     0   0
-                      -35    0   40
-                      -20   -20 -20
-                     7     7   5 ];
+        obstacles = [ ];
+        plume = [40
+                 50
+                 -20
+                 20];
     end
     
     methods (Sealed,Access=public)
