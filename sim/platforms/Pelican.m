@@ -323,12 +323,15 @@ classdef Pelican<Steppable & Platform
                 y = obj.simState.platforms{j}.X(2);
                 z = obj.simState.platforms{j}.X(3);
                 
-                xp = obj.simState.environment.area.obstacles(1,1);
-                yp = obj.simState.environment.area.obstacles(2,1);
-                zp = obj.simState.environment.area.obstacles(3,1);
-                r = obj.simState.environment.area.obstacles(4,1);
-                if(sqrt(((xp-x)*(xp-x)) + ((yp-y)*(yp-y)) + ((zp-z)*(zp-z)))<r)
+                xp = obj.simState.environment.area.plume(1,1);
+                yp = obj.simState.environment.area.plume(2,1);
+                zp = obj.simState.environment.area.plume(3,1);
+                r = obj.simState.environment.area.plume(4,1);
+                if(sqrt(((xp-x)*(xp-x)) + ((yp-y)*(yp-y)) + ((zp+z)*(zp+z)))< r)
                     obj.simState.task.p{j} = 1;
+                    obj.simState.task.in{j} = 1;
+               % else
+                %    obj.simState.task.p{j} = 0;
                 end
             end
         end   
@@ -425,12 +428,6 @@ classdef Pelican<Steppable & Platform
             
             end
         end
-        
-        function obj = plumedetect(obj)
-           
-                
-        end
-        
         
         function obj = printStateNotValidError(obj)
             % display state error info

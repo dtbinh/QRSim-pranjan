@@ -12,10 +12,10 @@ classdef BoxWithObstaclesArea<Area
     
     properties(Access=public)
         obstacles = [ ];
-        plume = [40
+        plume = [30  
                  50
-                 -20
-                 20];
+                 30
+                 25];
     end
     
     methods (Sealed,Access=public)
@@ -44,6 +44,7 @@ classdef BoxWithObstaclesArea<Area
                 end
                 % assert(isfield(objparams,'obstacles'),'boxwithobstaclesarea:noobstacles','for this type of flight area the task must define obstacles environment.area.obstacles');
                 tmp.obstacles = objparams.obstacles;
+                tmp.plume = objparams.plume;
                 
                 obj.graphics=feval(objparams.graphics.type,tmp);
             end

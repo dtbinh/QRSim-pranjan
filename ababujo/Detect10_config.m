@@ -35,7 +35,7 @@ c.stateLimits =[params.environment.area.limits(1:2);params.environment.area.limi
     -15,15;-15,15;-15,15;... % linear velocity limits
     -3,3;-3,3;-3,3]; %rotational velocity limits
     
-c.collisionDistance = 1; % two platforms closer than this distance are deemed in collision 
+c.collisionDistance = 5; % two platforms closer than this distance are deemed in collision 
 c.senseDistance = 10;    % ababujo: trying to create various response based on varied sensing capabilities of platforms.
 c.dynNoise = [0;0;0;0;0;0];
 

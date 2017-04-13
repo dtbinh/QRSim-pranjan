@@ -233,8 +233,8 @@ classdef TaskTrial<Task
                             obj.d{j} = 0;
                             obj.f{j} = 0;
                             x = U(1,j);
-                            y = U(2,j);
-                            z = U(3,j)-5;
+                            y = U(2,j)-5;
+                            z = U(3,j);
                             UU(:,j) = obj.PIDs{j}.computeU(obj.simState.platforms{j}.getX(),[x;y;z],0);
                     else
                             UU(:,j) = obj.PIDs{j}.computeU(obj.simState.platforms{j}.getX(),U(:,j),0);

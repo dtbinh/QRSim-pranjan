@@ -103,13 +103,17 @@ classdef AreaWithObstaclesGraphics<handle
                      Y+objparams.obstacles(2,i), ...
                      Z*abs(objparams.obstacles(3,i))+objparams.obstacles(3,i));
                 set(objparams.state.display3d.obstacle(i),'EdgeColor', [0.627 0.321 0.176],'FaceColor', [0.627 0.321 0.176]); 
-                set(objparams.state.display3d.obstacle(i),'FaceAlpha',0.7,'EdgeAlpha',1);
+                set(objparams.state.display3d.obstacle(i),'FaceAlpha',1,'EdgeAlpha',1);
             end
             
             %Creating Plume
             [x,y,z] = sphere;
             
-            surf(20*x+40,20*y+50,20*z-20)
+            surf(objparams.plume(4,1)*x+objparams.plume(1,1),...
+                objparams.plume(4,1)*y+objparams.plume(2,1),...
+                objparams.plume(4,1)*z-objparams.plume(3,1),...
+                'FaceAlpha',0.5,'EdgeColor','none')
+            
             
             %invert axis to be coherent with NED
             set(gca,'ZDir','rev');

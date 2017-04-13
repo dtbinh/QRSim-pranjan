@@ -131,9 +131,7 @@ classdef PelicanGraphics<QuadrotorGraphics
             % Example:
             %   updateGraphics()
             %
-            
             obj.X = X(1:6);
-            
             set(0,'CurrentFigure',obj.simState.display3d.figure)
             
             % rotations and translation
