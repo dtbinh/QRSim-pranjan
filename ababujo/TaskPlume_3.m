@@ -1,11 +1,5 @@
-classdef TaskPlume_1<Task
-    % ababujo: Creating a scenario as follows: Three drones moving towards an obstacle(wall) 
-    % and on the other side of the obstacle, two drones are moving towards each other. 
-    % One of the 3 drones does not have any detection capability. 
-    % The second drone can detect anything within a 5 feet distance from it, and when it does it comes to a sudden stop. 
-    % The third drone can detect anything within 10feet, and when it does- starts moving the other way. 
-    % The two drones on the other side of the wall should try to avoid the pending collision in someway.
-    % in this task all the sensors are noiseless and the wind is
+classdef TaskPlume_3<Task
+    % ababujo: Creating a scenario as follows: whole mesh intersect
     % turned off.
     
     properties (Constant)
@@ -38,7 +32,7 @@ classdef TaskPlume_1<Task
     
     methods (Sealed,Access=public)
         
-        function obj = TaskPlume_1(state)
+        function obj = TaskPlume_3(state)
             obj = obj@Task(state);
         end
         
@@ -65,7 +59,7 @@ classdef TaskPlume_1<Task
             % these need to follow the conventions of axis(), they are in m, Z down
             % note that the lowest Z limit is the refence for the computation of wind shear and turbulence effects
             taskparams.environment.area.limits = [-60 60 -60 60 -60 0];
-            taskparams.environment.area.type = 'BoxWithObstaclesArea';
+            taskparams.environment.area.type = 'BoxWithObstaclesArea_3';
             
             % originutmcoords is the location of the RVC (our usual flying site)
             % generally when this is changed gpsspacesegment.orbitfile and
@@ -80,10 +74,10 @@ classdef TaskPlume_1<Task
              %ababujo:obstacles{Column - X Y Z(h) r}
            % taskparams.environment.area.obstacles = taskparams.environment.area.type.obstacles;
            taskparams.environment.area.obstacles = [ ];
-           taskparams.environment.area.plume = [10  
-                 40
+           taskparams.environment.area.plume = [30  
+                 50
                  30
-                 15];
+                 25];
             % GPS
             % The space segment of the gps system
             taskparams.environment.gpsspacesegment.on = 0; %% NO GPS NOISE!!!

@@ -14,7 +14,7 @@ addpath(['..',filesep,'..',filesep,'controllers']);
 % create simulator object
 qrsim = QRSim();
 
-state = qrsim.init('TaskPlume_1');
+state = qrsim.init('TaskPlume_2');
 
 % reminder:
 % platforms in N1 -> no sensing features
@@ -47,26 +47,6 @@ end
 
 
 elapsed = toc(tstart);figure();
-figure
-
-
-    
-for j=1:N,
-    X = state.task.vt{j};
-    for i=1:size(U,1),
-        subplot(size(U,1),1,i);
-        plot((1:state.task.durationInSteps)*state.task.dt,U(i,:));
-        hold on;
-        
-            X = state.task.vt{j};
-            Y = X(i,:);
-            plot((1:state.task.durationInSteps)*state.task.dt,Y,'--r');
-         axis([0 state.task.durationInSteps*state.task.dt -6 6]);
-         xlabel('t [s]');
-         ylabel('[m/s]');
-    end
-end
-
 
 
 fprintf('running %d times real time\n',(state.task.durationInSteps*state.DT)/elapsed);
