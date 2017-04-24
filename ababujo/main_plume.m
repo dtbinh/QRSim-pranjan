@@ -1,9 +1,7 @@
-% ababujo: Creating a scenario as follows: Three drones moving towards an obstacle(wall) 
-% and on the other side of the obstacle, two drones are moving towards each other. 
-% One of the 3 drones does not have any detection capability. 
-% The second drone can detect anything within a 5 feet distance from it, and when it does it comes to a sudden stop. 
-% The third drone can detect anything within 10feet, and when it does- starts moving the other way. 
-% The two drones on the other side of the wall should try to avoid the pending collision in someway.
+% ababujo: Creating a scenario as follows: Plume wrappping algorithm
+% change task to reflect different cases
+% single point of intersection, multiple intersection and almost the whole
+% mesh intersect the plume. implemented with a 3x3 mesh 
 
 clear all
 close all
@@ -14,7 +12,7 @@ addpath(['..',filesep,'..',filesep,'controllers']);
 % create simulator object
 qrsim = QRSim();
 
-state = qrsim.init('TaskPlume_2');
+state = qrsim.init('TaskPlume_1');
 
 % reminder:
 % platforms in N1 -> no sensing features
