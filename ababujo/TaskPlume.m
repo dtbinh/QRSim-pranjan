@@ -406,16 +406,14 @@ classdef TaskPlume<Task
             end
         end
         
-        
-        
-           function UU = step2(obj,U)
+        function UU = step2(obj,U)
             obj.time = obj.time +1;
-            
+
             N = obj.N4;
             UU = zeros(5,N); 
-            
-           % ob = obj.simState.platforms{i}.ObDetect();
-           for i = 1: N,
+
+            % ob = obj.simState.platforms{i}.ObDetect();
+            for i = 1: N,
                ob = obj.simState.platforms{i}.PlumeDetect();
                for k = 1:N
                    count = 0;
@@ -476,8 +474,8 @@ classdef TaskPlume<Task
                                     [center,radius] = sphereFit([X,YZ]');
                    end
                 end
+                end
             end
-        end
      
         
         
@@ -512,5 +510,5 @@ classdef TaskPlume<Task
                 r = - obj.PENALTY;
             end
         end
-    end
+        end
 end

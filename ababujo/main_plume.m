@@ -6,8 +6,8 @@
 clear all
 close all
 % include simulator
-addpath(['..',filesep,'..',filesep,'sim']);
-addpath(['..',filesep,'..',filesep,'controllers']);
+addpath(['..',filesep,'sim']);
+addpath(['..',filesep,'controllers']);
 
 % create simulator object
 qrsim = QRSim();
@@ -28,7 +28,7 @@ tstart = tic;
 for i=1:state.task.durationInSteps,
     tloop=tic;
     for j=1:state.task.N4,
-       if(state.platforms{j}.isValid())                  
+       if(state.platforms{j}.isValid())     % Why this?             
           U(:,j) = [2;0;0];   
        end
     end

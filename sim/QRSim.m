@@ -286,7 +286,10 @@ classdef QRSim<handle
             obj.par.environment.area.DT = obj.DT;
             obj.par.environment.area.state = obj.simState;
             obj.simState.environment.area = feval(obj.par.environment.area.type, obj.par.environment.area);
-            
+            % pranjan: BoxObstaclesArea and TaskPlume both had plume
+            % defined. If both are not equal then TaskPlume takes
+            % precedence. Ideally, this should be set at a better place.
+            obj.simState.environment.area.plume = obj.par.environment.area.plume;
             
             %%% instantiates the platform objects
             assert(isfield(obj.par,'platforms')&&(~isempty(obj.par.platforms)),'qrsim:noplatforms','the task must define at least one platform');

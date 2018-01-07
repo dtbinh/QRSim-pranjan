@@ -59,7 +59,7 @@ classdef TaskPlume_3<Task
             % these need to follow the conventions of axis(), they are in m, Z down
             % note that the lowest Z limit is the refence for the computation of wind shear and turbulence effects
             taskparams.environment.area.limits = [-60 60 -60 60 -60 0];
-            taskparams.environment.area.type = 'BoxWithObstaclesArea_3';
+            taskparams.environment.area.type = 'BoxWithObstaclesArea';
             
             % originutmcoords is the location of the RVC (our usual flying site)
             % generally when this is changed gpsspacesegment.orbitfile and
@@ -184,7 +184,7 @@ classdef TaskPlume_3<Task
                    if(obj.p{i}==1)
                        UU(:,i) = obj.PIDs{i}.computeU(obj.simState.platforms{i}.getX(),[0;0;0],0);
                        
-                       obj.vt{i} = [obj.vt{i},[0 ;0 ;0]];
+                       obj.vt{i} = [obj.vt{i}, [0 ;0 ;0]];
                    else
                         
                         for j=1:size(Cen,2)

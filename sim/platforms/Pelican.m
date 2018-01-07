@@ -38,7 +38,7 @@ classdef Pelican<Steppable & Platform
     %    isValid()          - true if the state is valid
     %    getX()             - returns the state (noiseless)
     %    getEX()            - returns the estimated state (noisy)
-    %    getEXasX()         - returns the estimated state (noisy) formatted as the noiseless state    
+    %    getEXasX()         - returns the estimated state (noisy) formatted as the noiseless state
     %
     properties (Constant)
         CONTROL_LIMITS = [-0.9,0.9; -0.9,0.9; 0,1; -4.5,4.5; 9,12]; %limits of the control inputs
@@ -51,6 +51,11 @@ classdef Pelican<Steppable & Platform
         labels = {'px','py','pz','phi','theta','psi','u','v','w','p','q','r','thrust'};
     end
     
+    properties (Access = public)
+        transmitter_strength = 20;  % pranjan in Db
+        in_msg_queue;   % pranjan
+        out_msg_queue;  % pranjan
+    end
     properties (Access = protected)
         gpsreceiver; % handle to the gps receiver
         aerodynamicTurbulence;  % handle to the aerodynamic turbulence
@@ -67,6 +72,8 @@ classdef Pelican<Steppable & Platform
         valid;       % the state of the platform is invalid
         graphicsOn;  % true if graphics is on
         senseD;  % ababujo: Added to change the capability to sense an obstacle or other drone
+        
+        
     end
     
     methods (Access = public)
@@ -88,7 +95,7 @@ classdef Pelican<Steppable & Platform
             %                objparams.collisionDistance - distance from any other object that defines a collision
             %                objparams.dynNoise -  standard deviation of the noise dynamics
             %                objparams.state - handle to simulator state
-            %
+            %                objparams.transmitter_strength -
             
             obj=obj@Steppable(objparams);
             obj=obj@Platform(objparams);
@@ -107,7 +114,9 @@ classdef Pelican<Steppable & Platform
             assert(isfield(objparams,'dynNoise'),'pelican:nodynnoise',...
                 'the platform config file must define the dynNoise parameter');
             obj.dynNoise = objparams.dynNoise;
-            
+            obj.in_msg_queue = [];  % pranjan. Initialize a message queue on each platform.
+            obj.out_msg_queue = [];
+            obj.transmitter_strength = 20;  % pranjan TODO: Initialize it through objparams.
             if(isfield(objparams,'behaviourIfStateNotValid'))
                 obj.behaviourIfStateNotValid = objparams.behaviourIfStateNotValid;
             end
@@ -155,7 +164,7 @@ classdef Pelican<Steppable & Platform
                 'the platform config file must define a gps receiver if not needed set gpsreceiver.on = 0');
             objparams.sensors.gpsreceiver.DT = objparams.DT;
             objparams.sensors.gpsreceiver.state = objparams.state;
-            if(objparams.sensors.gpsreceiver.on)                
+            if(objparams.sensors.gpsreceiver.on)
                 assert(~strcmp(class(obj.simState.environment.gpsspacesegment),'GPSSpaceSegment'),...
                     'pelican:nogpsspacesegment','the task config file must define a gpsspacesegment if a gps receiver is in use');
                 
@@ -215,7 +224,7 @@ classdef Pelican<Steppable & Platform
                 eX = obj.eX(varargin{1});
             end
         end
-                
+        
         function X = getEXasX(obj,varargin)
             % returns the estimated state (noisy) formatted as the noiseless state
             % eX = [~px;~py;-~h;~phi;~theta;~psi;~u;~v;~w;~p;~q;~r]
@@ -265,7 +274,7 @@ classdef Pelican<Steppable & Platform
             
             % set things
             obj.gpsreceiver.setState(X);
-            obj.ahars.setState(X);            
+            obj.ahars.setState(X);
             obj.aerodynamicTurbulence.setState(obj.X);
             
             obj.a  = zeros(3,1);
@@ -275,7 +284,7 @@ classdef Pelican<Steppable & Platform
             obj.gpsreceiver.reset();
             obj.aerodynamicTurbulence.reset();
             obj.ahars.reset();
-            obj.resetAdditional();            
+            obj.resetAdditional();
             
             % get measurements
             estimatedAHA = obj.ahars.getMeasurement([obj.X;obj.a]);
@@ -314,27 +323,68 @@ classdef Pelican<Steppable & Platform
             d = obj.senseD;
         end
         
-        function ob = PlumeDetect(obj)
+        function outputArg = send_message(obj, uav_message, dst, sim_state)
+            %METHOD1 Summary of this method goes here
+            %   Detailed explanation goes here
+            %outputArg = uav_message.Property1 + inputArg;
+            dest_coord = sim_state.platforms{dst}.getX(1:3);
+            uav_message.dest = dst;
+            euclid_distance = pdist2(uav_message.origin_coord, dest_coord);
+            src_transmission_strength = sim_state.platforms{uav_message.src}.transmitter_strength;
+            %received = msg_receipt(src_transmission_strength, euclid_distance);
+            received = rand();
+            ct = 0;
+            if received < 0.5
+                sim_state.platforms{dst}.in_msg_queue = [sim_state.platforms{dst}.in_msg_queue, uav_message];
+                ct = 1;
+            end
+            outputArg = ct;
+        end
+        
+        function out_message = read_message(obj, uav_no, sim_state)
+            % Method: Reads only one message from head of queue.
+            out_message = [];
+            if ~isempty(sim_state.platforms{uav_no}.in_msg_queue)
+                out_message = sim_state.platforms{uav_no}.in_msg_queue(1);
+                %sim_state.platforms{uav_no}.in_msg_queue(1) = [];  % remove the message from queue.
+            end
+        end
+        
+        function ob = PlumeDetect(obj, j)
             % ababujo: Global code if this platform detects any obstacle or
             % other drone in its sensing distance
+            % j is uav_no
             ob = 0 ;
-            for j=1:length(obj.simState.platforms),
-                x = obj.simState.platforms{j}.X(1);
-                y = obj.simState.platforms{j}.X(2);
-                z = obj.simState.platforms{j}.X(3);
-                
-                xp = obj.simState.environment.area.plume(1,1);
-                yp = obj.simState.environment.area.plume(2,1);
-                zp = obj.simState.environment.area.plume(3,1);
-                r = obj.simState.environment.area.plume(4,1);
-                if(sqrt(((xp-x)*(xp-x)) + ((yp-y)*(yp-y)) + ((zp+z)*(zp+z)))< r)
-                    obj.simState.task.p{j} = 1;
-                    obj.simState.task.in{j} = 1;
-               % else
-                %    obj.simState.task.p{j} = 0;
+            
+            x = obj.X(1);
+            y = obj.X(2);
+            z = obj.X(3);
+            % [x,y,z] = obj.simState.platforms{1}.getX(1:3);
+            xp = obj.simState.environment.area.plume(1,1);
+            yp = obj.simState.environment.area.plume(2,1);
+            zp = obj.simState.environment.area.plume(3,1);
+            r = obj.simState.environment.area.plume(4,1);
+            if(sqrt(((xp-x)*(xp-x)) + ((yp-y)*(yp-y)) + ((zp+z)*(zp+z)))< r)  % why is zp + z instead of zp - z?
+                % Because, due to some unknown reason, z coordinate of plume is being displayed at -z
+                ob = 1;
+                velocity = obj.getX(7:9);
+                if ~isempty(obj.out_msg_queue)  % If the drone has already sent a message then don't resend it.
+                    return
                 end
+                % Create a message with data as plumedetect
+                msg = uav_message(j, obj.simState, "plumeDetected");
+                obj.out_msg_queue = [obj.out_msg_queue, msg];
+                for k=1:length(obj.simState.platforms)
+                    if k ~= j
+                        obj.send_message(msg, k, obj.simState);  % For each other platform call send message
+                    end
+                end
+                obj.simState.task.p{j} = 1;
+                obj.simState.task.in{j} = 1;
+                % else
+                %    obj.simState.task.p{j} = 0;
             end
-        end   
+        end
         
         function ob = ObDetect(obj)
             % ababujo: Global code if this platform detects any obstacle or
@@ -355,8 +405,8 @@ classdef Pelican<Steppable & Platform
                         end
                     end
                 end
-            end    
-        end            
+            end
+        end
         
     end
     
@@ -371,13 +421,13 @@ classdef Pelican<Steppable & Platform
             % ya  [-2048..2048] 1=2.17109414e-3 rad/s = 0.124394531 deg/s commanded yaw velocity
             % bat [9..12] Volts battery voltage
             %
-             assert(size(U,1)==5,'pelican:inputoob','wrong size of control inputs should be 5xN\n\tU = [pt;rl;th;ya;bat] \n');
-             
-             for i = 1:size(U,2),
-             assert(~(any(U(:,i)<obj.CONTROL_LIMITS(:,1)) || any(U(:,i)>obj.CONTROL_LIMITS(:,2))),...
-                'pelican:inputoob',['control inputs values not within limits \n',...
-                '\tU = [pt;rl;th;ya;bat] \n\n\tpt  [-0.9..0.9] rad commanded pitch \n\trl  [-0.9..0.9] rad commanded roll \n',...
-                '\tth  [0..1] unitless commanded throttle \n\tya  [-4.5..4.5] rad/s commanded yaw velocity \n\tbat [9..12] Volts battery voltage \n']);
+            assert(size(U,1)==5,'pelican:inputoob','wrong size of control inputs should be 5xN\n\tU = [pt;rl;th;ya;bat] \n');
+            
+            for i = 1:size(U,2),
+                assert(~(any(U(:,i)<obj.CONTROL_LIMITS(:,1)) || any(U(:,i)>obj.CONTROL_LIMITS(:,2))),...
+                    'pelican:inputoob',['control inputs values not within limits \n',...
+                    '\tU = [pt;rl;th;ya;bat] \n\n\tpt  [-0.9..0.9] rad commanded pitch \n\trl  [-0.9..0.9] rad commanded roll \n',...
+                    '\tth  [0..1] unitless commanded throttle \n\tya  [-4.5..4.5] rad/s commanded yaw velocity \n\tbat [9..12] Volts battery voltage \n']);
             end
             
             US = U.*obj.SI_2_UAVCTRL;
@@ -389,7 +439,7 @@ classdef Pelican<Steppable & Platform
             
             valid = all(X(1:to)>=obj.stateLimits(1:to,1)) && all(X(1:to)<=obj.stateLimits(1:to,2));
             
-
+            
         end
         
         %ababujo: Incollision: We dont want to discard all the platforms if there is a
@@ -421,11 +471,11 @@ classdef Pelican<Steppable & Platform
                         y = obj.simState.platforms{i}.getX(2);
                         z = 0;
                         obj.simState.platforms{i}.valid=0;
-                       % obj.simState.platforms{i}.setX([x;y;z;obj.simState.platforms{i}.getX(4:6)]);
+                        % obj.simState.platforms{i}.setX([x;y;z;obj.simState.platforms{i}.getX(4:6)]);
                         break;
                     end
                 end
-            
+                
             end
         end
         
@@ -462,15 +512,15 @@ classdef Pelican<Steppable & Platform
     methods (Access=protected)
         
         function obj=resetAdditional(obj)
-           % used by subclasses to reset additional stuff 
+            % used by subclasses to reset additional stuff
         end
         
         function obj=updateAdditional(obj,U)
-           % used by subclasses to update additional stuff 
+            % used by subclasses to update additional stuff
         end
-         
+        
         function obj=updateAdditionalGraphics(obj,X)
-           % used by subclasses to update additional graphics stuff 
+            % used by subclasses to update additional graphics stuff
         end
         
         function obj = update(obj,U)
@@ -503,13 +553,13 @@ classdef Pelican<Steppable & Platform
                 
                 obj.aerodynamicTurbulence.step(obj.X);
                 turbWind = obj.aerodynamicTurbulence.getLinear(obj.X);
-                    
+                
                 accNoise = obj.dynNoise.*[randn(obj.simState.rStreams{obj.prngIds(1)},1,1);
-                                          randn(obj.simState.rStreams{obj.prngIds(2)},1,1);
-                                          randn(obj.simState.rStreams{obj.prngIds(3)},1,1);
-                                          randn(obj.simState.rStreams{obj.prngIds(4)},1,1);
-                                          randn(obj.simState.rStreams{obj.prngIds(5)},1,1);
-                                          randn(obj.simState.rStreams{obj.prngIds(6)},1,1)];
+                    randn(obj.simState.rStreams{obj.prngIds(2)},1,1);
+                    randn(obj.simState.rStreams{obj.prngIds(3)},1,1);
+                    randn(obj.simState.rStreams{obj.prngIds(4)},1,1);
+                    randn(obj.simState.rStreams{obj.prngIds(5)},1,1);
+                    randn(obj.simState.rStreams{obj.prngIds(6)},1,1)];
                 
                 % dynamics
                 [obj.X obj.a] = ruku2('pelicanODE', obj.X, [US;meanWind + turbWind; obj.MASS; accNoise], obj.dt);
@@ -520,9 +570,9 @@ classdef Pelican<Steppable & Platform
                     %want to discard all the platforms if there is a
                     %collision, but just bring the drone down to the ground
                     if(obj.inCollision())
-                       % obj.eX = nan(20,1);
+                        % obj.eX = nan(20,1);
                         %obj.valid=0;
-                    
+                        
                         obj.printStateNotValidError();
                     end
                     % AHARS
@@ -541,7 +591,7 @@ classdef Pelican<Steppable & Platform
                     
                     obj.updateAdditional(U);
                     
-                    % graphics      
+                    % graphics
                     if(obj.graphicsOn)
                         obj.graphics.update(obj.X);
                         obj.updateAdditionalGraphics(obj.X);
@@ -553,8 +603,8 @@ classdef Pelican<Steppable & Platform
                     obj.valid=0;
                     
                     obj.printStateNotValidError();
-                end                
+                end
             end
-        end        
+        end
     end
 end
