@@ -197,14 +197,25 @@ classdef TaskPlume_1<Task
                     if ~isempty(msg)  % Some message was read.
                         msg_coord = msg.origin_coord;
                         uav_coord = obj.simState.platforms{i}.getX(1:3);
-                        d_y = msg_coord(2) - uav_coord(2);
-                        d_x = msg_coord(1) - uav_coord(1);
-                        theta = atan2(d_y, d_x);
-                        v_x = obj.simState.platforms{i}.getX(7);
-                        v_z = v_x * cos(theta);
-                        v_y = v_x * sin(theta);
-                        UU(:,i) = obj.PIDs{i}.computeU(obj.simState.platforms{i}.getX(), [v_x; v_y; v_z], 0);
-                        obj.vt{i} = [obj.vt{i}, [v_x; v_y; v_z]];  % why this?
+                        %msg_coord(1) = msg_coord(1) + 25;
+                        vec = msg_coord - uav_coord;
+                        %d_z = msg_coord(3) - uav_coord(3);
+                        %d_y = msg_coord(2) - uav_coord(2);
+                        %d_x = msg_coord(1) - uav_coord(1);
+                        %vec = [d_x, d_y, d_z];
+                        vec = vec/ norm(vec);
+
+                        vel_vec = obj.simState.platforms{i}.getX(7:9);
+                        vel_mag = norm(vel_vec);
+                        vec = vec * vel_mag;
+                        
+                        
+                        %theta = atan2(d_y, d_x);
+                        %v_x = obj.simState.platforms{i}.getX(7);
+                        %v_z = v_x * cos(theta);
+                        %v_y = v_x * sin(theta);
+                        UU(:,i) = obj.PIDs{i}.computeU(obj.simState.platforms{i}.getX(), [vel_vec(1); vec(2)/2; vec(3)/3], 0);
+                        obj.vt{i} = [obj.vt{i}, [vec(1); vec(2); vec(3)]];  % why this?
                     else
                         % If UAV_i detected a plume then move towards UAV_i
                         % Else keep moving in the original direction.
