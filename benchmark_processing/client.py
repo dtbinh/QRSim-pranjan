@@ -44,6 +44,6 @@ if __name__ == "__main__":
     if len(sys.argv) <= 1:
         server_address = ("localhost", 10000)
     else:
-        server_address = ("localhost", sys.argv[1])
+        server_address = (sys.argv[1], int(sys.argv[2]))
     start_client(server_address)
 
