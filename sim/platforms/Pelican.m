@@ -53,8 +53,11 @@ classdef Pelican<Steppable & Platform
     
     properties (Access = public)
         transmitter_strength = 20;  % pranjan in Db
-        in_msg_queue;   % pranjan
+        d_min = 10;     % if distance between A and B is less than d_min, both experience a PUSH force.
+        d_max = 20;     % If diatance between A and B is larger than d_max, both experience a PULL force.
+        in_msg_queue;   % pranjan.
         out_msg_queue;  % pranjan
+        uav_coord;      % pranjan. A platform shall store the coordinates of other UAVs. This info shall be collected through messages.
     end
     properties (Access = protected)
         gpsreceiver; % handle to the gps receiver
@@ -72,8 +75,6 @@ classdef Pelican<Steppable & Platform
         valid;       % the state of the platform is invalid
         graphicsOn;  % true if graphics is on
         senseD;  % ababujo: Added to change the capability to sense an obstacle or other drone
-        
-        
     end
     
     methods (Access = public)
@@ -116,7 +117,8 @@ classdef Pelican<Steppable & Platform
             obj.dynNoise = objparams.dynNoise;
             obj.in_msg_queue = [];  % pranjan. Initialize a message queue on each platform.
             obj.out_msg_queue = [];
-            obj.transmitter_strength = 20;  % pranjan TODO: Initialize it through objparams.
+            %obj.transmitter_strength = 20;  % pranjan TODO: Initialize it through objparams.
+            obj.uav_coord = zeros(3, obj.simState.task.N4);
             if(isfield(objparams,'behaviourIfStateNotValid'))
                 obj.behaviourIfStateNotValid = objparams.behaviourIfStateNotValid;
             end
@@ -323,31 +325,60 @@ classdef Pelican<Steppable & Platform
             d = obj.senseD;
         end
         
-        function outputArg = send_message(obj, uav_message, dst, sim_state)
+        function outputArg = send_message(obj, uav_message, dst)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
             %outputArg = uav_message.Property1 + inputArg;
-            dest_coord = sim_state.platforms{dst}.getX(1:3);
+            dest_coord = obj.simState.platforms{dst}.getX(1:3);
             uav_message.dest = dst;
             euclid_distance = pdist2(uav_message.origin_coord, dest_coord);
-            src_transmission_strength = sim_state.platforms{uav_message.src}.transmitter_strength;
+            src_transmission_strength = obj.simState.platforms{uav_message.src}.transmitter_strength;
             %received = msg_receipt(src_transmission_strength, euclid_distance);
-            received = rand();
+            if obj.simState.message_loss == 1
+                received = rand();
+            else
+                received = 1;
+            end
             ct = 0;
-            if received < 0.5
-                sim_state.platforms{dst}.in_msg_queue = [sim_state.platforms{dst}.in_msg_queue, uav_message];
+            if received > 0.5
+                %fprintf("\n%d Sent message to %d of type %s",uav_message.src, uav_message.dest, uav_message.data);
+                obj.simState.platforms{dst}.in_msg_queue = [obj.simState.platforms{dst}.in_msg_queue, uav_message];
                 ct = 1;
             end
             outputArg = ct;
         end
         
-        function out_message = read_message(obj, uav_no, sim_state)
-            % Method: Reads only one message from head of queue.
+        function out_message = read_plume_detected_message(obj, uav_no)
             out_message = [];
-            if ~isempty(sim_state.platforms{uav_no}.in_msg_queue)
-                out_message = sim_state.platforms{uav_no}.in_msg_queue(1);
-                %sim_state.platforms{uav_no}.in_msg_queue(1) = [];  % remove the message from queue.
+            if obj.simState.send_plume_detected == 1
+               if ~isempty(obj.in_msg_queue)
+                    out_message = obj.simState.platforms{uav_no}.in_msg_queue(1);
+                    %obj.in_msg_queue(1) = [];  % remove the message from queue.
+               end
+            end        
+        end
+        
+        function out_message = read_message(obj, uav_no)
+            % Method: Reads only one message from head of queue.
+            
+            % Iterate over each message in the queue.
+            % If the message is a plume detected message append it to
+            % out_message queue.
+            % if the message is a coordinate update message then update the
+            % coordinates in uav_coord field.
+            nrows = length(obj.simState.platforms{uav_no}.in_msg_queue);
+            out_message = [];
+            %for i=1:nrows
+            if nrows > 1
+                msg = obj.simState.platforms{uav_no}.in_msg_queue(1);
+                if msg.type == 2  % Coordinate update
+                     obj.simState.platforms{uav_no}.uav_coord(:,msg.src) = msg.origin_coord;
+                elseif msg.type == 1  % Plume detected message
+                    %out_message = [out_message, msg];
+                    out_message = msg;
+                end
             end
+            %obj.simState.platforms{uav_no}.in_msg_queue = [];
         end
         
         function ob = PlumeDetect(obj, j)
@@ -368,15 +399,22 @@ classdef Pelican<Steppable & Platform
                 % Because, due to some unknown reason, z coordinate of plume is being displayed at -z
                 ob = 1;
                 velocity = obj.getX(7:9);
-                if ~isempty(obj.out_msg_queue)  % If the drone has already sent a message then don't resend it.
+                if ~isempty(obj.out_msg_queue) && obj.simState.repeat_plume_msg 
+                    % If the drone has already sent a message and should not repeat plume detected message; then don't resend it.
                     return
                 end
+                
                 % Create a message with data as plumedetect
-                msg = uav_message(j, obj.simState, "plumeDetected");
-                obj.out_msg_queue = [obj.out_msg_queue, msg];
+                msg = uav_message(j, obj.simState, "plumeDetected", 1);
+                if obj.simState.repeat_plume_msg == 1
+                    obj.out_msg_queue = [obj.out_msg_queue, msg];
+                end
+                if obj.simState.send_plume_detected == 0  % If drones don't send plume detected message.
+                    return
+                end
                 for k=1:length(obj.simState.platforms)
                     if k ~= j
-                        obj.send_message(msg, k, obj.simState);  % For each other platform call send message
+                        obj.send_message(msg, k);  % For each other platform call send message
                     end
                 end
                 obj.simState.task.p{j} = 1;

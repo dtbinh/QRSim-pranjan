@@ -174,54 +174,47 @@ classdef TaskPlume_1<Task
             
             N = obj.N4;
             UU = zeros(5,N);
-            Cen = [2,5,8];
-            U1 = [3,6,9];
-            D1 = [1,4,7];
-            Cen2= [4,5,6];
-            L1 = [1,2,3];
-            R1= [7,8,9];
-            N = obj.N4;
-            row = sqrt(obj.N4);
+            %Cen = [2,5,8];
+            %U1 = [3,6,9];
+            %D1 = [1,4,7];
+            %Cen2= [4,5,6];
+            %L1 = [1,2,3];
+            %R1= [7,8,9];
+            %N = obj.N4;
+            %row = sqrt(obj.N4);
             
             % ob = obj.simState.platforms{i}.ObDetect();
-            for i = 1: N,
+            for i = 1: N
                 ob = obj.simState.platforms{i}.PlumeDetect(i);
                 % If a UAV detects a plume, it stops
+                msg = obj.simState.platforms{i}.read_message(i);
                 if(ob ==1) 
                     UU(:,i) = obj.PIDs{i}.computeU(obj.simState.platforms{i}.getX(),[0;0;0],0);
                     
-                    obj.vt{i} = [obj.vt{i},[0 ;0 ;0]];  % Why this?
+                    %obj.vt{i} = [obj.vt{i},[0 ;0 ;0]];  % Why this?
                 else
-                    % Check the message queue for plume detect messages.
-                    msg = obj.simState.platforms{i}.read_message(i, obj.simState);
-                    if ~isempty(msg)  % Some message was read.
-                        msg_coord = msg.origin_coord;
+                    % Check the message queue for any messages.
+                    if ~isempty(msg)  % Some plume_detected messages were read.
+                        msg_coord = [0;0;0];
+                        for k=1:length(msg)
+                            msg_coord = msg_coord + msg(k).origin_coord;
+                        end
                         uav_coord = obj.simState.platforms{i}.getX(1:3);
-                        %msg_coord(1) = msg_coord(1) + 25;
                         vec = msg_coord - uav_coord;
-                        %d_z = msg_coord(3) - uav_coord(3);
-                        %d_y = msg_coord(2) - uav_coord(2);
-                        %d_x = msg_coord(1) - uav_coord(1);
-                        %vec = [d_x, d_y, d_z];
                         vec = vec/ norm(vec);
 
                         vel_vec = obj.simState.platforms{i}.getX(7:9);
                         vel_mag = norm(vel_vec);
                         vec = vec * vel_mag;
                         
-                        
-                        %theta = atan2(d_y, d_x);
-                        %v_x = obj.simState.platforms{i}.getX(7);
-                        %v_z = v_x * cos(theta);
-                        %v_y = v_x * sin(theta);
                         UU(:,i) = obj.PIDs{i}.computeU(obj.simState.platforms{i}.getX(), [vel_vec(1); vec(2)/2; vec(3)/3], 0);
-                        obj.vt{i} = [obj.vt{i}, [vec(1); vec(2); vec(3)]];  % why this?
+                        %obj.vt{i} = [obj.vt{i}, [vec(1); vec(2); vec(3)]];  % why this?
                     else
                         % If UAV_i detected a plume then move towards UAV_i
                         % Else keep moving in the original direction.
                         % UU(:,k) = obj.PIDs{k}.computeU(obj.simState.platforms{k}.getX(),U(:,k),0);
                         UU(:,i) = obj.PIDs{i}.computeU(obj.simState.platforms{i}.getX(),U(:,i),0);
-                        obj.vt{i} = [obj.vt{i},U(:,i)];
+                        %obj.vt{i} = [obj.vt{i},U(:,i)];
                     end
                 end
             end

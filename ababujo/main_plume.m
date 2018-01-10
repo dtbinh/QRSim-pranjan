@@ -28,8 +28,21 @@ tstart = tic;
 for i=1:state.task.durationInSteps,
     tloop=tic;
     for j=1:state.task.N4,
-       if(state.platforms{j}.isValid())     % Why this?             
-          U(:,j) = [2;0;0];   
+       if(state.platforms{j}.isValid())     % Why this? 
+           if state.send_coordinates == 1
+               % Send UAVs coordinates. All the coordinates shall be available
+               % before the next time quantum starts. We have kept it this way
+               % because, in our benchmarks the message processing +
+               % transmission delay was much smaller than the timestep of 0.02
+               % seconds.
+               msg = uav_message(j, state, "Coordinates", 2);
+               for k=1:state.task.N4
+                    if j ~= k
+                        state.platforms{j}.send_message(msg, k);
+                    end
+               end
+           end
+           U(:,j) = [2;0;0];   
        end
     end
     % step simulator

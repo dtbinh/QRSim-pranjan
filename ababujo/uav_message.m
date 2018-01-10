@@ -8,11 +8,12 @@ classdef uav_message
         src         % Source UAV no.
         dest        % Destination UAV no.
         origin_coord  % The x,y,z coordinate of the src UAV when the message was transmitted
-        data          % The string data
+        type        % 1= plumeDetected, 2=CoordinateUpdate
+        data          % The data
     end
     
     methods
-        function obj = uav_message(src, sim_state, data)
+        function obj = uav_message(src, sim_state, data, type)
             %MESSAGE Construct an instance of this class
             %   Detailed explanation goes here
             obj.id = char(java.util.UUID.randomUUID);
@@ -21,6 +22,7 @@ classdef uav_message
             %obj.dest = dest;
             obj.origin_coord = sim_state.platforms{src}.getX(1:3);
             obj.data = data;
+            obj.type = type;
         end
     end
 end

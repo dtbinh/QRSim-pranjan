@@ -171,7 +171,7 @@ classdef QRSim<handle
             
             assert((obj.bootstrapped==1),'qrsim:ntbootsrapped','after resetting the simulation seed, qrsim.reset() must be called to reinitilize all the simulation objects');
             
-            for j=1:obj.simState.task.dt/obj.DT,
+            for j=1:obj.simState.task.dt/obj.DT
                 % update time
                 obj.simState.t=obj.simState.t+obj.simState.DT;
                 
