@@ -173,48 +173,60 @@ classdef TaskPlume_1<Task
             obj.time = obj.time +1;
             
             N = obj.N4;
-            UU = zeros(5,N);
-            %Cen = [2,5,8];
-            %U1 = [3,6,9];
-            %D1 = [1,4,7];
-            %Cen2= [4,5,6];
-            %L1 = [1,2,3];
-            %R1= [7,8,9];
-            %N = obj.N4;
-            %row = sqrt(obj.N4);
-            
+            UU = zeros(5,N);            
             % ob = obj.simState.platforms{i}.ObDetect();
             for i = 1: N
                 ob = obj.simState.platforms{i}.PlumeDetect(i);
-                % If a UAV detects a plume, it stops
-                msg = obj.simState.platforms{i}.read_message(i);
-                if(ob ==1) 
+                obj.simState.platforms{i}.read_message(i);
+                if(ob ==1) % If a UAV detects a plume, it stops
                     UU(:,i) = obj.PIDs{i}.computeU(obj.simState.platforms{i}.getX(),[0;0;0],0);
-                    
                     %obj.vt{i} = [obj.vt{i},[0 ;0 ;0]];  % Why this?
                 else
                     % Check the message queue for any messages.
-                    if ~isempty(msg)  % Some plume_detected messages were read.
-                        msg_coord = [0;0;0];
-                        for k=1:length(msg)
-                            msg_coord = msg_coord + msg(k).origin_coord;
+                    ct = 0;
+                    res_coord = [0;0;0];
+                    if obj.simState.send_plume_detected == 1 % If drones transmit plume detected message.
+                        for k=1:N  % Check for all the plume detected messages
+                            peer_coord = obj.simState.platforms{i}.plume_coord(:,k);
+                            if norm(peer_coord) ~= 0
+                                res_coord = res_coord + peer_coord;
+                                ct = ct + 1;
+                            end
                         end
+                    end
+                    if obj.simState.send_coordinates == 1  % If drones transmit their coordinates
+                        % Check if the current drone is outside of d_min and
+                        % d_max range.
+                        my_coord = obj.simState.platforms{i}.getX(1:3);
+                        for k=1:N
+                            peer_coord = obj.simState.platforms{i}.uav_coord(:,k);
+                            if norm(peer_coord) ~= 0
+                                dst = pdist([my_coord';peer_coord'], 'euclidean');
+                                if dst > obj.simState.platforms{i}.d_max
+                                    res_coord = res_coord + peer_coord;
+                                    ct = ct + 1;
+                                elseif dst < obj.simState.platforms{i}.d_min
+                                    res_coord = res_coord - peer_coord;
+                                    ct = ct + 1;
+                                end
+                            end
+                        end
+                    end
+                    if ct > 0
+                        res_coord = res_coord / ct;
+                        res_coord(1) = res_coord(1) + 15;
                         uav_coord = obj.simState.platforms{i}.getX(1:3);
-                        vec = msg_coord - uav_coord;
+                        vec = res_coord - uav_coord;
                         vec = vec/ norm(vec);
-
                         vel_vec = obj.simState.platforms{i}.getX(7:9);
                         vel_mag = norm(vel_vec);
                         vec = vec * vel_mag;
-                        
-                        UU(:,i) = obj.PIDs{i}.computeU(obj.simState.platforms{i}.getX(), [vel_vec(1); vec(2)/2; vec(3)/3], 0);
-                        %obj.vt{i} = [obj.vt{i}, [vec(1); vec(2); vec(3)]];  % why this?
+                        UU(:,i) = obj.PIDs{i}.computeU(obj.simState.platforms{i}.getX(), [vec(1); vec(2)/2; vec(3)/3], 0);
                     else
                         % If UAV_i detected a plume then move towards UAV_i
                         % Else keep moving in the original direction.
                         % UU(:,k) = obj.PIDs{k}.computeU(obj.simState.platforms{k}.getX(),U(:,k),0);
                         UU(:,i) = obj.PIDs{i}.computeU(obj.simState.platforms{i}.getX(),U(:,i),0);
-                        %obj.vt{i} = [obj.vt{i},U(:,i)];
                     end
                 end
             end
