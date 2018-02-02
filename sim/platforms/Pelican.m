@@ -48,17 +48,24 @@ classdef Pelican<Steppable & Platform
         % pelicanODE function
         G = 9.81;    %  gravity m/s^2
         MASS = 1.68; %  mass of the platform Kg
+        F_MAX = 5;   %  pranjan. Unit: Newton. The magnitude of the maximum force (Push or pull) that a drone shall experience when it goes out of range. i.e. <d_min or >d_max
+        F_PLUME = 5; % pranjan. Newton. The force experienced when a drone gets a plume detected message.
         labels = {'px','py','pz','phi','theta','psi','u','v','w','p','q','r','thrust'};
     end
     
     properties (Access = public)
         transmitter_strength = 20;  % pranjan in Db
-        d_min = 5;     % if distance between A and B is less than d_min, both experience a PUSH force.
-        d_max = 40;     % If diatance between A and B is larger than d_max, both experience a PULL force.
+        d_min = 1;     % if distance between A and B is less than d_min, both experience a PUSH force.
+        d_max = 35;     % If diatance between A and B is larger than d_max, both experience a PULL force.
+        % Currently d_min and d_max are arbitrary. TODO: Decide on an
+        % appropriate value. This should be different for each drone and
+        % depend on the transmitter strength.
         in_msg_queue;   % pranjan.
-        out_msg_queue;  % pranjan
+        out_msg_queue;  % pranjan.
         uav_coord;      % pranjan. A platform shall store the coordinates of other UAVs. This info shall be collected through messages.
         plume_coord;    % pranjan. A platform shall store the coordinates where plumes have been detected.
+        distances = [];      % pranjan. Ideal distance to other drones.
+        elasticity = 0.1;     % pranjan. Explanation coming soon....
     end
     properties (Access = protected)
         gpsreceiver; % handle to the gps receiver
@@ -484,7 +491,7 @@ classdef Pelican<Steppable & Platform
             
         end
         
-        %ababujo: Incollision: We dont want to discard all the platforms if there is a
+        %ababujo: : We dont want to discard all the platforms if there is a
         % collision, but just bring the drone down to the ground
         function coll = inCollision(obj)
             % returns 1 if a collision is occourring
@@ -496,11 +503,14 @@ classdef Pelican<Steppable & Platform
                         if(norm(obj.simState.platforms{i}.X(1:3)-obj.simState.platforms{j}.X(1:3))< obj.simState.platforms{j}.getCollisionDistance())
                             coll = 1;
                             fprintf('%d\n',obj.simState.platforms{j}.X(1:3));
-                            fprintf('Platform %d too close to another platform\n',j);
-                            x = obj.simState.platforms{j}.X(1);
-                            y = obj.simState.platforms{j}.X(2);
-                            z = 0;
-                            obj.simState.platforms{j}.setX([x;y;z;obj.simState.platforms{j}.X(4:6)]);
+                            if norm(obj.simState.platforms{j}.getX(7:9)) > 0.1  % pranjan. Temporary solution. Only bring down the drones which are moving. not the stopped ones.
+                                fprintf('Platform %d too close to another platform\n',j);
+                                x = obj.simState.platforms{j}.X(1);
+                                y = obj.simState.platforms{j}.X(2);
+                                z = 0;
+                                obj.simState.platforms{j}.setX([x;y;z;obj.simState.platforms{j}.X(4:6)]);
+                                obj.simState.platforms{j}.valid = 0.0;
+                            end
                         end
                     end
                 end
@@ -606,14 +616,14 @@ classdef Pelican<Steppable & Platform
                 % dynamics
                 [obj.X obj.a] = ruku2('pelicanODE', obj.X, [US;meanWind + turbWind; obj.MASS; accNoise], obj.dt);
                 
-                %if(isreal(obj.X)&& obj.thisStateIsWithinLimits(obj.X) && ~obj.inCollision())
-                if(isreal(obj.X)&& obj.thisStateIsWithinLimits(obj.X) )
+                if(isreal(obj.X)&& obj.thisStateIsWithinLimits(obj.X) && ~obj.inCollision())
+                %if(isreal(obj.X)&& obj.thisStateIsWithinLimits(obj.X) )
                     %ababujo:brought incollision check inside, as we dont
                     %want to discard all the platforms if there is a
                     %collision, but just bring the drone down to the ground
                     if(obj.inCollision())
-                        % obj.eX = nan(20,1);
-                        %obj.valid=0;
+                        obj.eX = nan(20,1);
+                        obj.valid=0;
                         
                         obj.printStateNotValidError();
                     end
