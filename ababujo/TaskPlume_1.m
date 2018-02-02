@@ -82,8 +82,8 @@ classdef TaskPlume_1<Task
             taskparams.environment.area.obstacles = [ ];
             taskparams.environment.area.plume = [10
                 40
-                30
-                15];  % x,y,z of center and radius. Note this is only for display. The actual plume is in BoxWithObstaclesArea file.
+                25
+                9];  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.
             % GPS
             % The space segment of the gps system
             taskparams.environment.gpsspacesegment.on = 0; %% NO GPS NOISE!!!
@@ -164,76 +164,128 @@ classdef TaskPlume_1<Task
                 obj.vt{i} = zeros(3,obj.durationInSteps);
                 j=j+1;
             end
+            for i=1:obj.N4
+                my_coord = obj.simState.platforms{i}.getX(1:3);
+                for j=1:obj.N4
+                    peer_coord = obj.simState.platforms{j}.getX(1:3);   
+                    m_dst = pdist([my_coord';peer_coord'], 'euclidean');  % Should be 0 when i==j
+                    obj.simState.platforms{i}.distances = [obj.simState.platforms{i}.distances, m_dst];
+                    fprintf("Me = %d peer = %d, ideal dist = %f\n", i, j, m_dst);
+                end
+            end
+        end
+        
+        function acc_mag = get_acceleration_mag(obj, m_dst, me, peer)
+            mass = obj.simState.platforms{me}.MASS;
+            f_max = obj.simState.platforms{me}.F_MAX;
+            d_ideal = obj.simState.platforms{me}.distances(:,peer);
+            elastic = obj.simState.platforms{me}.elasticity;
+            d_min = d_ideal*(elastic);  % TODO
+            d_max = d_ideal*(1+elastic);
+            d_max_ex = d_ideal * (1+2*elastic);
+            %d_max = obj.simState.platforms{me}.d_max;
+            %quart = (d_max - d_min)/8;
+            m_base = d_min;
+            p_base = d_max_ex - d_max;
+            F = 0;
+            if m_dst >= d_min && m_dst <= d_max
+                F = 0;
+            elseif m_dst < d_min
+                F = -((f_max/m_base) * (d_min - m_dst));
+            elseif m_dst > d_max_ex
+                F = f_max;
+            elseif m_dst > d_max
+                F = (f_max/p_base) * (m_dst - d_max);
+            end
+            acc_mag = F/mass;
         end
         
         % in step(), the drone takes a step based on its relative position
         % with each other and also to other dronee, obstacles, etc..
-        
         function UU = step(obj,U)
             obj.time = obj.time +1;
             
             N = obj.N4;
-            UU = zeros(5,N);            
+            UU = zeros(5,N);
             % ob = obj.simState.platforms{i}.ObDetect();
-            for i = 1: N
-                ob = obj.simState.platforms{i}.PlumeDetect(i);
-                obj.simState.platforms{i}.read_message(i);
-                if(ob ==1) % If a UAV detects a plume, it stops
-                    UU(:,i) = obj.PIDs{i}.computeU(obj.simState.platforms{i}.getX(),[0;0;0],0);
+            for me = 1: N
+                ob = obj.simState.platforms{me}.PlumeDetect(me);
+                obj.simState.platforms{me}.read_message(me);
+                %if(ob ==1 || obj.simState.platforms{me}.isValid() == 0) % If a UAV detects a plume, or it collided with another drone, it stops
+                if(ob ==1)    
+                    UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(),[0;0;0],0);
                     %obj.vt{i} = [obj.vt{i},[0 ;0 ;0]];  % Why this?
+                elseif obj.simState.platforms{me}.isValid() == 0
+                    UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(),[0;0;0],0);
                 else
                     % Check the message queue for any messages.
                     ct = 0;
                     res_coord = [0;0;0];
+                    p_acc_vec = [0;0;0];
+                    c_acc_vec = [0;0;0];
                     if obj.simState.send_plume_detected == 1 % If drones transmit plume detected message.
-                        for k=1:N  % Check for all the plume detected messages
-                            peer_coord = obj.simState.platforms{i}.plume_coord(:,k);
+                        for peer=1:N  % Check for all the plume detected messages
+                            peer_coord = obj.simState.platforms{me}.plume_coord(:,peer);
                             if norm(peer_coord) ~= 0
                                 res_coord = res_coord + peer_coord;
                                 ct = ct + 1;
                             end
                         end
+                        if ct > 0
+                            res_coord = res_coord / ct;
+                        end
+                        if norm(res_coord) ~= 0
+                            my_coord = obj.simState.platforms{me}.getX(1:3);
+                            vec = res_coord - my_coord;
+                            unit_vec = vec/ norm(vec);
+                            p_acc_mag = obj.simState.platforms{me}.F_PLUME / obj.simState.platforms{me}.MASS;
+                            p_acc_vec = p_acc_mag * unit_vec;
+                        end
                     end
                     if obj.simState.send_coordinates == 1  % If drones transmit their coordinates
                         % Check if the current drone is outside of d_min and
                         % d_max range.
-                        my_coord = obj.simState.platforms{i}.getX(1:3);
-                        for k=1:N
-                            peer_coord = obj.simState.platforms{i}.uav_coord(:,k);
-                            if norm(peer_coord) ~= 0
-                                dst = pdist([my_coord';peer_coord'], 'euclidean');
-                                if dst > obj.simState.platforms{i}.d_max
-                                    res_coord = res_coord + peer_coord;
-                                    ct = ct + 1;
-                                elseif dst < obj.simState.platforms{i}.d_min
-                                    res_coord = res_coord - peer_coord;
-                                    ct = ct + 1;
+                        my_coord = obj.simState.platforms{me}.getX(1:3);
+                        c_ct = 0;
+                        %c_acc_vec = [0;0;0];
+                        for peer=1:N
+                            if obj.simState.platforms{peer}.isValid() == 1
+                                peer_coord = obj.simState.platforms{me}.uav_coord(:,peer);
+                                if norm(peer_coord) ~= 0
+                                    m_dst = pdist([my_coord';peer_coord'], 'euclidean');
+                                    c_acc_mag = obj.get_acceleration_mag(m_dst, me, peer);
+                                    if c_acc_mag ~= 0
+                                        dir_vec = (peer_coord - my_coord);
+                                        dir_vec = dir_vec / norm(dir_vec);
+                                        c_acc_vec = c_acc_vec + dir_vec * c_acc_mag;
+                                        c_ct = c_ct + 1;
+                                    end
                                 end
                             end
                         end
+                        if c_ct > 0
+                            c_acc_vec = c_acc_vec / c_ct;
+                        end
                     end
-                    if ct > 0
-                        res_coord = res_coord / ct;
-                        res_coord(1) = res_coord(1) + 15;
-                        uav_coord = obj.simState.platforms{i}.getX(1:3);
-                        vec = res_coord - uav_coord;
-                        vec = vec/ norm(vec);
-                        vel_vec = obj.simState.platforms{i}.getX(7:9);
-                        vel_mag = norm(vel_vec);
-                        vec = vec * vel_mag;
-                        UU(:,i) = obj.PIDs{i}.computeU(obj.simState.platforms{i}.getX(), [vec(1); vec(2)/2; vec(3)/3], 0);
+                    %res_acc_vec = [0;0;0];
+                    if norm(c_acc_vec) ~= 0 && norm(p_acc_vec) ~= 0
+                        res_acc_vec = (c_acc_vec + p_acc_vec)/2;
+                    else
+                        res_acc_vec = c_acc_vec + p_acc_vec;
+                    end
+                    if norm(res_acc_vec) ~= 0
+                        vel_vec_initial = obj.simState.platforms{me}.getX(7:9);
+                        vel_vec_target = vel_vec_initial + res_acc_vec * obj.simState.task.dt;
+                        UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(), vel_vec_target, 0);
                     else
                         % If UAV_i detected a plume then move towards UAV_i
                         % Else keep moving in the original direction.
                         % UU(:,k) = obj.PIDs{k}.computeU(obj.simState.platforms{k}.getX(),U(:,k),0);
-                        UU(:,i) = obj.PIDs{i}.computeU(obj.simState.platforms{i}.getX(),U(:,i),0);
+                        UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(),U(:,me),0);
                     end
                 end
             end
         end
-        
-        
-        
         
         
         function updateReward(~,~)
