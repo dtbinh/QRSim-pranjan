@@ -356,7 +356,95 @@ classdef Pelican<Steppable & Platform
                     end
                 end
             end    
-        end            
+        end  
+        
+        function ob = force1(obj,j)
+            u = obj.simState.platforms{j}.X(7);
+            v = obj.simState.platforms{j}.X(8);
+            z = obj.simState.platforms{j}.X(9);
+            fx = 0;
+            fy = 0;
+            fz = 0;
+            Fx = 0;
+            Fy = 0;
+            Fz = 0;
+            
+            for i = 1:length(obj.simState.platforms)
+                u1 = obj.simState.platforms{i}.X(7);
+                v1 = obj.simState.platforms{i}.X(8);
+                z1 = obj.simState.platforms{i}.X(9); 
+                
+                %Force in respective direction
+                fx = fx + ( obj.simState.task.m{i} * (u1-u)/0.02 );
+                fy = fy + ( obj.simState.task.m{i} * (v1-v)/0.02 );
+                fz = fz + ( obj.simState.task.m{i} * (z1-z)/0.02 );
+                
+                %Resultant Force vector on UAVi;
+                Fx = Fx + fx;
+                Fy = Fy + fy;
+                Fz = Fz + fz;
+            end
+            
+            %Resultant acceleration vector of UAVi
+            ax = Fx/obj.simState.task.m{j};
+            ay = Fx/obj.simState.task.m{j};
+            az = Fx/obj.simState.task.m{j};
+            
+            obj.simState.platforms{j}.setX([obj.simState.platforms{j}.X(1:5); ax+u]);
+            obj.simState.platforms{j}.setX([obj.simState.platforms{j}.X(1:5); ay+v]);
+            obj.simState.platforms{j}.setX([obj.simState.platforms{j}.X(1:5); az+z]);
+        end
+        
+        function ob = force(obj,j)
+            %ababujo inserting an independant force function based on its
+            %previous state and current position of j in relevance to the
+            %plume
+            u = obj.simState.platforms{j}.X(7);
+            v = obj.simState.platforms{j}.X(8);
+            z = obj.simState.platforms{j}.X(9);
+            
+            % Numbering as pre-defined in the task class
+            Cen = [2,5,8];
+            U1 = [3,6,9];
+            D1 = [1,4,7];
+            Cen2= [4,5,6];
+            L1 = [1,2,3];
+            R1= [7,8,9];
+            
+            
+            p = obj.simState.platforms{1}.PlumeDetect();
+            for i=1:length(obj.simState.platforms),
+                if (obj.simState.task.p{i} == 1)
+                    %If the UAV is the one that detected the plume, return
+                    %control to stop at the current location
+                    if (j==i)
+                        obj.simState.platforms{j}.setX([obj.simState.platforms{j}.X(1:3);0;0;0]);
+                        return;
+                    end
+                    % If the UAV that deteted the plume is on the
+                    % horizontal center line - 
+                    % and the UAV j is above it, it has to start moving
+                    % down & if UAV j is below it, it has to start moving up 
+                    if (ismember(i,Cen(:))&& ismember(j,U1))
+                        obj.simState.platforms{j}.setX([obj.simState.platforms{j}.X(1:5);1.5+z]);
+                    elseif (ismember(i,Cen(:))&& ismember(j,D1))
+                        obj.simState.platforms{j}.setX([obj.simState.platforms{j}.X(1:5);-1.5+z]);
+                    end
+                    
+                    % If the UAV that deteted the plume is on the
+                    % vertical center line - 
+                    % and the UAV j is to the left, it has to start moving
+                    % to the right & if UAV j is to the right, it has to start moving to the left 
+                    if (ismember(i,Cen2(:))&& ismember(j,L1))
+                        obj.simState.platforms{j}.setX([obj.simState.platforms{j}.X(1:4);1.5+v;z]);
+                    elseif (ismember(i,Cen2(:))&& ismember(j,R1))
+                        obj.simState.platforms{j}.setX([obj.simState.platforms{j}.X(1:4);-1.5+v;z]);
+                    end
+                
+                end
+                
+            end
+        end
         
     end
     
