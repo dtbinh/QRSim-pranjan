@@ -30,6 +30,7 @@ classdef TaskPlume_1<Task
         C; % completed array
         L;  % Nodes to the left of the centroid
         R;  % nodes to the right of the centroid
+        m; %ababujo: mass of UAVs
         mesh = 0;
         done = 0;
         time =0;
@@ -139,6 +140,7 @@ classdef TaskPlume_1<Task
                 obj.d{i} = 0;
                 obj.p{i} = 0;
                 obj.in{i} = 0;
+                obj.m{i} = 1;
                 obj.vt{i} = zeros(3,obj.durationInSteps);
                 j=j+1;
             end
@@ -150,6 +152,7 @@ classdef TaskPlume_1<Task
                 obj.d{i} = 0;
                 obj.p{i} = 0;
                 obj.in{i} = 0;
+                obj.m{i} = 1;
                 obj.vt{i} = zeros(3,obj.durationInSteps);
                 j=j+1;
             end
@@ -161,6 +164,7 @@ classdef TaskPlume_1<Task
                 obj.d{i} = 0;
                 obj.p{i} = 0;
                 obj.in{i} = 0;
+                obj.m{i} = 1;
                 obj.vt{i} = zeros(3,obj.durationInSteps);
                 j=j+1;
             end
@@ -174,213 +178,225 @@ classdef TaskPlume_1<Task
             
             N = obj.N4;
             UU = zeros(5,N); 
-            Cen = [2,5,8];
-            U1 = [3,6,9];
-            D1 = [1,4,7];
-            Cen2= [4,5,6];
-            L1 = [1,2,3];
-            R1= [7,8,9];
-            N = obj.N4;
-            row = sqrt(obj.N4);
             
-           % ob = obj.simState.platforms{i}.ObDetect();
-           for i = 1: N,
-               ob = obj.simState.platforms{i}.PlumeDetect();
-                    % If a UAV detects a plume, it stops
-                   if(obj.p{i}==1)
-                       UU(:,i) = obj.PIDs{i}.computeU(obj.simState.platforms{i}.getX(),[0;0;0],0);
-                       
-                       obj.vt{i} = [obj.vt{i},[0 ;0 ;0]];
-                   else
-                        
-                        for j=1:size(Cen,2)
-                            %If the UAV at the center has found the plume
-                            %and broadcasts to its neighbours
-                            k=Cen(j);
-                            if(obj.p{k}==1)
-                                %UAVs below the center line has not
-                                %detected the plume. So, start moving up
-                                tr = k-1;
-                                if(obj.p{tr}==0)
-                                    u = obj.simState.platforms{i}.getX(7);
-                                    v = obj.simState.platforms{i}.getX(8);
-                                    z = obj.simState.platforms{i}.getX(9);
-                                    UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[u;v;1.5*z],0);
-                                    obj.vt{tr} =[obj.vt{tr},[u;v;1.5*z]];
-                                     ob = obj.simState.platforms{tr}.PlumeDetect();
-                                        % If a UAV detects a plume, it stops
-                                     if(obj.p{tr}==1)
-                                            UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[0;0;0],0);
-                                            obj.vt{tr} = [obj.vt{tr},[0 ;0 ;0]];
-                                     end
-                                end
-                                 %UAVs above the center line has not
-                                %detected the plume. So, start moving down
-                                tr = k+1;
-                                if(obj.p{tr}==0)
-                                    u = obj.simState.platforms{i}.getX(7);
-                                    v = obj.simState.platforms{i}.getX(8);
-                                    z = obj.simState.platforms{i}.getX(9);
-                                    UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[u;v;-1.5*z],0);
-                                    obj.vt{tr} = [obj.vt{tr},[u; v ;-1.5*z]];
-                                     ob = obj.simState.platforms{tr}.PlumeDetect();
-                                        % If a UAV detects a plume, it stops
-                                     if(obj.p{tr}==1)
-                                            UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[0;0;0],0);
-                                            obj.vt{tr} = [obj.vt{tr},[0; 0 ;0 ]];
-                                     end
-                                end
-                            end
-                        end
-                        for j=1:size(Cen2,2)
-                            %If the UAV at the center has found the plume
-                            %and broadcasts to its neighbours
-                            k=Cen2(j);
-                            if(obj.p{k}==1)
-                                %UAVs below the center line has not
-                                %detected the plume. So, start moving up
-                                tr = k-3;
-                                if(obj.p{tr}==0)
-                                    u = obj.simState.platforms{i}.getX(7);
-                                    v = obj.simState.platforms{i}.getX(8);
-                                    z = obj.simState.platforms{i}.getX(9);
-                                    UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[u;-1.5*v;z],0);
-                                     ob = obj.simState.platforms{tr}.PlumeDetect();
-                                     obj.vt{tr} = [obj.vt{tr},[u ;-1.5*v; z]];
-                                        % If a UAV detects a plume, it stops
-                                     if(obj.p{tr}==1)
-                                            UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[0;0;0],0);
-                                            obj.vt{tr} = [obj.vt{tr},[0 ;0; 0]];
-                                     end
-                                end
-                                 %UAVs above the center line has not
-                                %detected the plume. So, start moving down
-                                tr = k+3;
-                                if(obj.p{tr}==0)
-                                    u = obj.simState.platforms{i}.getX(7);
-                                    v = obj.simState.platforms{i}.getX(8);
-                                    z = obj.simState.platforms{i}.getX(9);
-                                    UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[u;1.5*v;z],0);
-                                     ob = obj.simState.platforms{tr}.PlumeDetect();
-                                     obj.vt{tr} = [obj.vt{tr},[u ;1.5*v; z]];
-                                        % If a UAV detects a plume, it stops
-                                     if(obj.p{tr}==1)
-                                            UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[0;0;0],0);
-                                            obj.vt{tr} = [obj.vt{tr},[0; 0 ;0 ]];
-                                     end
-                                end
-                            end
-                        end
-                        
-                        for j=1:size(U1,2)
-                            %If a UAV at the Top most layer has found the plume
-                            %and broadcasts to its neighbours
-                            k=U1(j);
-                            if(obj.p{k}==1)
-                                %UAVs below the top line has not
-                                %detected the plume. So, start moving up
-                                for h=1:row-1
-                                    tr = k-h;
-                                    if(obj.p{tr}==0)
-                                        u = obj.simState.platforms{i}.getX(7);
-                                        v = obj.simState.platforms{i}.getX(8);
-                                        z = obj.simState.platforms{i}.getX(9);
-                                        UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[u;v;1.5*z],0);
-                                         ob = obj.simState.platforms{tr}.PlumeDetect();
-                                         obj.vt{tr} = [obj.vt{tr},[u; v ;1.5*z]];
-                                        % If a UAV detects a plume, it stops
-                                     if(obj.p{tr}==1)
-                                            UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[0;0;0],0);
-                                            obj.vt{tr} = [obj.vt{tr},[0 ;0; 0]];
-                                     end
-                                    end
-                                end
-                            end
-                        end   
-                        
-                        for j=1:size(D1,2)
-                             %If a UAV at the Botton most layer has found the plume
-                            %and broadcasts to its neighbours
-                            k=D1(j);
-                            if(obj.p{k}==1)
-                                %UAVs below the top line has not
-                                %detected the plume. So, start moving up
-                                for h=1:row-1
-                                    tr = k+h;
-                                    if(obj.p{tr}==0)
-                                        u = obj.simState.platforms{i}.getX(7);
-                                        v = obj.simState.platforms{i}.getX(8);
-                                        z = obj.simState.platforms{i}.getX(9);
-                                        UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[u;v;1.5*z],0);
-                                        obj.vt{tr} = [obj.vt{tr},[u; v ;15*z]];
-                                         ob = obj.simState.platforms{tr}.PlumeDetect();
-                                        % If a UAV detects a plume, it stops
-                                     if(obj.p{tr}==1)
-                                            UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[0;0;0],0);
-                                            obj.vt{tr} = [obj.vt{tr},[0; 0 ;0]];
-                                     end
-                                    end
-                                end
-                            end
-                        end
-                        
-                        
-                        for j=1:size(L1,2)
-                            %If a UAV at the Left most layer has found the plume
-                            %and broadcasts to its neighbours
-                            k=L1(j);
-                            if(obj.p{k}==1)
-                                %UAVs below the top line has not
-                                %detected the plume. So, start moving up
-                                for h=1:row-1
-                                    tr = k+3*h;
-                                    if(obj.p{tr}==0)
-                                        u = obj.simState.platforms{i}.getX(7);
-                                        v = obj.simState.platforms{i}.getX(8)+h;
-                                        z = obj.simState.platforms{i}.getX(9);
-                                        UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[u;1.5*v;z],0);
-                                        obj.vt{tr} = [obj.vt{tr},[u; 1.5*v; z]];
-                                         ob = obj.simState.platforms{tr}.PlumeDetect();
-                                        % If a UAV detects a plume, it stops
-                                     if(obj.p{tr}==1)
-                                            UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[0;0;0],0);
-                                            obj.vt{tr} = [obj.vt{tr},[0; 0 ;0 ]];
-                                     end
-                                        
-                                    end
-                                end
-                            end
-                        end   
-                        for j=1:size(R1,2)
-                             %If a UAV at the Botton most layer has found the plume
-                            %and broadcasts to its neighbours
-                            k=R1(j);
-                            if(obj.p{k}==1)
-                                %UAVs below the top line has not
-                                %detected the plume. So, start moving up
-                                for h=1:row-1
-                                    tr = k-3*h;
-                                    if(obj.p{tr}==0)
-                                        u = obj.simState.platforms{i}.getX(7);
-                                        v = obj.simState.platforms{i}.getX(8)+h;
-                                        z = obj.simState.platforms{i}.getX(9);
-                                        UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[u;-1.5*v;z],0);
-                                         ob = obj.simState.platforms{tr}.PlumeDetect();
-                                         obj.vt{tr} = [obj.vt{tr},[u ;-1.5*v; z]];
-                                        % If a UAV detects a plume, it stops
-                                     if(obj.p{tr}==1)
-                                            UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[0;0;0],0);
-                                            obj.vt{tr} = [obj.vt{tr},[0 ;0 ;0]];
-                                     end
-                                    end
-                                end
-                            end
-                        end
-                   % UU(:,k) = obj.PIDs{k}.computeU(obj.simState.platforms{k}.getX(),U(:,k),0);
-                   UU(:,i) = obj.PIDs{i}.computeU(obj.simState.platforms{i}.getX(),U(:,i),0);
-                   obj.vt{i} = [obj.vt{i},U(:,i)];
-                   end
+            
+            for j = 1:N,
+                UU(:,j) = obj.PIDs{j}.computeU(obj.simState.platforms{j}.getX(),U(:,j),0);
+                obj.simState.platforms{j}.force(j);
+                u = obj.simState.platforms{j}.getX(7);
+                v = obj.simState.platforms{j}.getX(8);
+                z = obj.simState.platforms{j}.getX(9);
+                UU(:,j) = obj.PIDs{j}.computeU(obj.simState.platforms{j}.getX(),[u;v;z],0);
             end
+            
+%             Cen = [2,5,8];
+%             U1 = [3,6,9];
+%             D1 = [1,4,7];
+%             Cen2= [4,5,6];
+%             L1 = [1,2,3];
+%             R1= [7,8,9];
+%             N = obj.N4;
+%             row = sqrt(obj.N4);
+%             
+%            % ob = obj.simState.platforms{i}.ObDetect();
+%           % { 
+%           for i = 1: N,
+%                ob = obj.simState.platforms{i}.PlumeDetect(); 
+%                     % If a UAV detects a plume, it stops
+%                    if(obj.p{i}==1)
+%                        UU(:,i) = obj.PIDs{i}.computeU(obj.simState.platforms{i}.getX(),[0;0;0],0);
+%                        
+%                        obj.vt{i} = [obj.vt{i},[0 ;0 ;0]];
+%                    else
+%                         
+%                         for j=1:size(Cen,2)
+%                             %If the UAV at the center has found the plume
+%                             %and broadcasts to its neighbours
+%                             k=Cen(j);
+%                             if(obj.p{k}==1)
+%                                 %UAVs below the center line has not
+%                                 %detected the plume. So, start moving up
+%                                 tr = k-1;
+%                                 if(obj.p{tr}==0)
+%                                     u = obj.simState.platforms{i}.getX(7);
+%                                     v = obj.simState.platforms{i}.getX(8);
+%                                     z = obj.simState.platforms{i}.getX(9);
+%                                     UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[u;v;1.5*z],0);
+%                                     obj.vt{tr} =[obj.vt{tr},[u;v;1.5*z]];
+%                                      ob = obj.simState.platforms{tr}.PlumeDetect();
+%                                         % If a UAV detects a plume, it stops
+%                                      if(obj.p{tr}==1)
+%                                             UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[0;0;0],0);
+%                                             obj.vt{tr} = [obj.vt{tr},[0 ;0 ;0]];
+%                                      end
+%                                 end
+%                                  %UAVs above the center line has not
+%                                 %detected the plume. So, start moving down
+%                                 tr = k+1;
+%                                 if(obj.p{tr}==0)
+%                                     u = obj.simState.platforms{i}.getX(7);
+%                                     v = obj.simState.platforms{i}.getX(8);
+%                                     z = obj.simState.platforms{i}.getX(9);
+%                                     UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[u;v;-1.5*z],0);
+%                                     obj.vt{tr} = [obj.vt{tr},[u; v ;-1.5*z]];
+%                                      ob = obj.simState.platforms{tr}.PlumeDetect();
+%                                         % If a UAV detects a plume, it stops
+%                                      if(obj.p{tr}==1)
+%                                             UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[0;0;0],0);
+%                                             obj.vt{tr} = [obj.vt{tr},[0; 0 ;0 ]];
+%                                      end
+%                                 end
+%                             end
+%                         end
+%                         for j=1:size(Cen2,2)
+%                             %If the UAV at the center has found the plume
+%                             %and broadcasts to its neighbours
+%                             k=Cen2(j);
+%                             if(obj.p{k}==1)
+%                                 %UAVs below the center line has not
+%                                 %detected the plume. So, start moving up
+%                                 tr = k-3;
+%                                 if(obj.p{tr}==0)
+%                                     u = obj.simState.platforms{i}.getX(7);
+%                                     v = obj.simState.platforms{i}.getX(8);
+%                                     z = obj.simState.platforms{i}.getX(9);
+%                                     UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[u;-1.5*v;z],0);
+%                                      ob = obj.simState.platforms{tr}.PlumeDetect();
+%                                      obj.vt{tr} = [obj.vt{tr},[u ;-1.5*v; z]];
+%                                         % If a UAV detects a plume, it stops
+%                                      if(obj.p{tr}==1)
+%                                             UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[0;0;0],0);
+%                                             obj.vt{tr} = [obj.vt{tr},[0 ;0; 0]];
+%                                      end
+%                                 end
+%                                  %UAVs above the center line has not
+%                                 %detected the plume. So, start moving down
+%                                 tr = k+3;
+%                                 if(obj.p{tr}==0)
+%                                     u = obj.simState.platforms{i}.getX(7);
+%                                     v = obj.simState.platforms{i}.getX(8);
+%                                     z = obj.simState.platforms{i}.getX(9);
+%                                     UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[u;1.5*v;z],0);
+%                                      ob = obj.simState.platforms{tr}.PlumeDetect();
+%                                      obj.vt{tr} = [obj.vt{tr},[u ;1.5*v; z]];
+%                                         % If a UAV detects a plume, it stops
+%                                      if(obj.p{tr}==1)
+%                                             UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[0;0;0],0);
+%                                             obj.vt{tr} = [obj.vt{tr},[0; 0 ;0 ]];
+%                                      end
+%                                 end
+%                             end
+%                         end
+%                         
+%                         for j=1:size(U1,2)
+%                             %If a UAV at the Top most layer has found the plume
+%                             %and broadcasts to its neighbours
+%                             k=U1(j);
+%                             if(obj.p{k}==1)
+%                                 %UAVs below the top line has not
+%                                 %detected the plume. So, start moving up
+%                                 for h=1:row-1
+%                                     tr = k-h;
+%                                     if(obj.p{tr}==0)
+%                                         u = obj.simState.platforms{i}.getX(7);
+%                                         v = obj.simState.platforms{i}.getX(8);
+%                                         z = obj.simState.platforms{i}.getX(9);
+%                                         UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[u;v;1.5*z],0);
+%                                          ob = obj.simState.platforms{tr}.PlumeDetect();
+%                                          obj.vt{tr} = [obj.vt{tr},[u; v ;1.5*z]];
+%                                         % If a UAV detects a plume, it stops
+%                                      if(obj.p{tr}==1)
+%                                             UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[0;0;0],0);
+%                                             obj.vt{tr} = [obj.vt{tr},[0 ;0; 0]];
+%                                      end
+%                                     end
+%                                 end
+%                             end
+%                         end   
+%                         
+%                         for j=1:size(D1,2)
+%                              %If a UAV at the Botton most layer has found the plume
+%                             %and broadcasts to its neighbours
+%                             k=D1(j);
+%                             if(obj.p{k}==1)
+%                                 %UAVs below the top line has not
+%                                 %detected the plume. So, start moving up
+%                                 for h=1:row-1
+%                                     tr = k+h;
+%                                     if(obj.p{tr}==0)
+%                                         u = obj.simState.platforms{i}.getX(7);
+%                                         v = obj.simState.platforms{i}.getX(8);
+%                                         z = obj.simState.platforms{i}.getX(9);
+%                                         UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[u;v;1.5*z],0);
+%                                         obj.vt{tr} = [obj.vt{tr},[u; v ;15*z]];
+%                                          ob = obj.simState.platforms{tr}.PlumeDetect();
+%                                         % If a UAV detects a plume, it stops
+%                                      if(obj.p{tr}==1)
+%                                             UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[0;0;0],0);
+%                                             obj.vt{tr} = [obj.vt{tr},[0; 0 ;0]];
+%                                      end
+%                                     end
+%                                 end
+%                             end
+%                         end
+%                         
+%                         
+%                         for j=1:size(L1,2)
+%                             %If a UAV at the Left most layer has found the plume
+%                             %and broadcasts to its neighbours
+%                             k=L1(j);
+%                             if(obj.p{k}==1)
+%                                 %UAVs below the top line has not
+%                                 %detected the plume. So, start moving up
+%                                 for h=1:row-1
+%                                     tr = k+3*h;
+%                                     if(obj.p{tr}==0)
+%                                         u = obj.simState.platforms{i}.getX(7);
+%                                         v = obj.simState.platforms{i}.getX(8)+h;
+%                                         z = obj.simState.platforms{i}.getX(9);
+%                                         UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[u;1.5*v;z],0);
+%                                         obj.vt{tr} = [obj.vt{tr},[u; 1.5*v; z]];
+%                                          ob = obj.simState.platforms{tr}.PlumeDetect();
+%                                         % If a UAV detects a plume, it stops
+%                                      if(obj.p{tr}==1)
+%                                             UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[0;0;0],0);
+%                                             obj.vt{tr} = [obj.vt{tr},[0; 0 ;0 ]];
+%                                      end
+%                                         
+%                                     end
+%                                 end
+%                             end
+%                         end   
+%                         for j=1:size(R1,2)
+%                              %If a UAV at the Botton most layer has found the plume
+%                             %and broadcasts to its neighbours
+%                             k=R1(j);
+%                             if(obj.p{k}==1)
+%                                 %UAVs below the top line has not
+%                                 %detected the plume. So, start moving up
+%                                 for h=1:row-1
+%                                     tr = k-3*h;
+%                                     if(obj.p{tr}==0)
+%                                         u = obj.simState.platforms{i}.getX(7);
+%                                         v = obj.simState.platforms{i}.getX(8)+h;
+%                                         z = obj.simState.platforms{i}.getX(9);
+%                                         UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[u;-1.5*v;z],0);
+%                                          ob = obj.simState.platforms{tr}.PlumeDetect();
+%                                          obj.vt{tr} = [obj.vt{tr},[u ;-1.5*v; z]];
+%                                         % If a UAV detects a plume, it stops
+%                                      if(obj.p{tr}==1)
+%                                             UU(:,tr) = obj.PIDs{tr}.computeU(obj.simState.platforms{tr}.getX(),[0;0;0],0);
+%                                             obj.vt{tr} = [obj.vt{tr},[0 ;0 ;0]];
+%                                      end
+%                                     end
+%                                 end
+%                             end
+%                         end
+%                    % UU(:,k) = obj.PIDs{k}.computeU(obj.simState.platforms{k}.getX(),U(:,k),0);
+%                    UU(:,i) = obj.PIDs{i}.computeU(obj.simState.platforms{i}.getX(),U(:,i),0);
+%                    obj.vt{i} = [obj.vt{i},U(:,i)];
+%                    end
+%            end %}
         end
 
 

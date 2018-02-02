@@ -1,12 +1,13 @@
-classdef TaskPlume_2<Task
-    % ababujo: Single point of contact
+classdef TaskForceA<Task
+    % ababujo: Creating a scenario as follows: whole mesh intersect
+    % turned off.
     
     properties (Constant)
         durationInSteps = 1700;
         N1 = 0;             % drones without any obstacle sensing capability
         N2 = 0;             % drones with the ability to sense anything in the radius of 10f
         N3 = 0;             % drones with the ability to sense anything in the radius of 5f
-        N4 = 16;             % drones when sensing another drone carries straight on assuming the other drones would change its route
+        N4 = 9;             % drones when sensing another drone carries straight on assuming the other drones would change its route
         N5 = 0;             % drones when sensing another drone tries to fly above it.
         hfix = 15;           % fix flight altitude
         PENALTY = 1000;      % penalty reward in case of collision
@@ -32,7 +33,7 @@ classdef TaskPlume_2<Task
     
     methods (Sealed,Access=public)
         
-        function obj = TaskPlume_2(state)
+        function obj = TaskForceA(state)
             obj = obj@Task(state);
         end
         
@@ -58,7 +59,7 @@ classdef TaskPlume_2<Task
             %%%%% environment %%%%%
             % these need to follow the conventions of axis(), they are in m, Z down
             % note that the lowest Z limit is the refence for the computation of wind shear and turbulence effects
-            taskparams.environment.area.limits = [-120 120 -120 120 -120 0];
+            taskparams.environment.area.limits = [-60 60 -60 60 -60 0];
             taskparams.environment.area.type = 'BoxWithObstaclesArea';
             
             % originutmcoords is the location of the RVC (our usual flying site)
@@ -74,10 +75,10 @@ classdef TaskPlume_2<Task
              %ababujo:obstacles{Column - X Y Z(h) r}
            % taskparams.environment.area.obstacles = taskparams.environment.area.type.obstacles;
            taskparams.environment.area.obstacles = [ ];
-           taskparams.environment.area.plume = [5  
-                 40
-                 25
-                 15];
+     %      taskparams.environment.area.plume = [30  
+     %            50
+     %            30
+     %            25];
             % GPS
             % The space segment of the gps system
             taskparams.environment.gpsspacesegment.on = 0; %% NO GPS NOISE!!!
@@ -125,24 +126,42 @@ classdef TaskPlume_2<Task
         %ababujo: reset() is called initially to iniitialize the positions
         % and in this case the PIDs
         function reset(obj)
-            r = 0;
-            N = floor(sqrt(obj.N4));
-            i = 1;
-            for tr=1:N
-                for j=0:N-1
-                    obj.simState.platforms{i}.setX([-10;50-10*j;-obj.hfix-10*r;0;0;0]);
-                    obj.PIDs{i} = VelocityPID(obj.simState.DT);
-                    obj.f{i} = 0;
-                    obj.d{i} = 0;
-                    obj.p{i} = 0;
-                    obj.in{i} = 0;
-                    obj.m{i} = 1;
-                    obj.vt{i} = zeros(3,obj.durationInSteps);
-                    i=i+1;
-                end
-                r =r+1;
+            j=0;
+            for i=1:floor(obj.N4/3),
+                obj.simState.platforms{i}.setX([-10;50;-obj.hfix-10*j;0;0;0]);
+                obj.PIDs{i} = VelocityPID(obj.simState.DT);
+                obj.f{i} = 0;
+                obj.d{i} = 0;
+                obj.p{i} = 0;
+                obj.in{i} = 0;
+                obj.m{i} = 1;
+                obj.vt{i} = zeros(3,obj.durationInSteps);
+                j=j+1;
             end
-         
+            j=0;
+            for i=floor(obj.N4/3)+1:floor(2*obj.N4/3),
+                obj.simState.platforms{i}.setX([-10;40;-obj.hfix-10*j;0;0;0]);
+                obj.PIDs{i} = VelocityPID(obj.simState.DT);
+                obj.f{i} = 0;
+                obj.d{i} = 0;
+                obj.p{i} = 0;
+                obj.in{i} = 0;
+                obj.m{i} = 1;
+                obj.vt{i} = zeros(3,obj.durationInSteps);
+                j=j+1;
+            end
+            j=0;
+            for i=floor(2*obj.N4/3)+1:floor(obj.N4),
+                obj.simState.platforms{i}.setX([-10;30;-obj.hfix-10*j;0;0;0]);
+                obj.PIDs{i} = VelocityPID(obj.simState.DT);
+                obj.f{i} = 0;
+                obj.d{i} = 0;
+                obj.p{i} = 0;
+                obj.in{i} = 0;
+                obj.m{i} = 1;
+                obj.vt{i} = zeros(3,obj.durationInSteps);
+                j=j+1;
+            end
         end
 
         % in step(), the drone takes a step based on its relative position
@@ -153,71 +172,39 @@ classdef TaskPlume_2<Task
             
             N = obj.N4;
             UU = zeros(5,N); 
-            Cen = [5,6,7,8];
-            U1 = [13,14,15,16];
-            D1 = [1,2,3,4];
-            Cen2= [2,6,10,14];
-            L1 = [1,5,9,13];
-            R1= [4,8,12,16];
+            Cen = [2,5,8];
+            U1 = [3,6,9];
+            D1 = [1,4,7];
+            Cen2= [4,5,6];
+            L1 = [1,2,3];
+            R1= [7,8,9];
+            N = obj.N4;
             row = sqrt(obj.N4);
             
            % ob = obj.simState.platforms{i}.ObDetect();
-           for i = 1: N,
-               ob = obj.simState.platforms{i}.PlumeDetect();
-                    % If a UAV detects a plume, it stops
-                   if(obj.p{i}==1)
-                       UU(:,i) = obj.PIDs{i}.computeU(obj.simState.platforms{i}.getX(),[0;0;0],0);
-                       
-                       obj.vt{i} = [obj.vt{i},[0 ;0 ;0]];
-                   else
-                        for j=1:N,
-                            temp =0;
-                            if((i~=j)&&(obj.p{j}==0))
-                                x1 = obj.simState.platforms{i}.getX(1);
-                                y1 = obj.simState.platforms{i}.getX(2);
-                                z1 = obj.simState.platforms{i}.getX(3);
-                                
-                                x2 = obj.simState.platforms{j}.getX(1);
-                                y2 = obj.simState.platforms{j}.getX(2);
-                                z2 = obj.simState.platforms{j}.getX(3);
-                                
-                                %dist  = sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) + (z1-z2)*(z1-z2));
-                                %step = dist/5;
-                                
-                                u2 = obj.simState.platforms{j}.getX(7);
-                                v2 = obj.simState.platforms{j}.getX(8);
-                                w2 = obj.simState.platforms{j}.getX(9);
-                                
-                                %heading angle
-                                psi2 = obj.simState.platforms{j}.getX(6);
-                                % rotationg the wp to body coordinates
-                                dr = ((x2-x1)^2+(y2-y1)^2)^0.5;
-                                a = (atan2((y2-y1),(x2-x1)) - psi2);
-            
-                                bx = dr * cos(a);
-                                by = dr * sin(a); 
-                                desu = 2*bx;
-                                desv = 2*by;
-                                
-                                %Sensing angle
-                                dotprod = x1*x2 + y1*y2 + z1*z2;
-                                mod_denom = sqrt(x1^2 + y1^2 + z1^2 )* sqrt(x2^2 + y2^2 + z2^2 ) ;
-                                cosnum = dotprod/mod_denom;
-                                Psi = acos(cosnum);
-                               
-                                %desired Heading angle(new)
-                                desPsi = Psi - psi2;
-                                
-                                UU(:,j) = obj.PIDs{j}.computeU(obj.simState.platforms{j}.getX(),[2*u2;2*v2;-w2],desPsi);
-                                temp = 1;
-                            end    
-                        
-                             if((temp ==0)&&(obj.p{j}==0))
-                                 UU(:,j) = obj.PIDs{j}.computeU(obj.simState.platforms{j}.getX(),U(:,j),0);
-                            end
-                        end
-                   end
-            end
+           for i = 1: N
+                u = obj.simState.platforms{i}.getX(7);
+                v = obj.simState.platforms{i}.getX(8);
+                z = obj.simState.platforms{i}.getX(9);
+                                    
+                    if (ismember(i,Cen(:)) || ismember(i,U1))
+                        z = 1.5+z ;
+                    else
+                        z = -1.5+z ;
+                    end
+                    
+                    % If the UAV that deteted the plume is on the
+                    % vertical center line - 
+                    % and the UAV j is to the left, it has to start moving
+                    % to the right & if UAV j is to the right, it has to start moving to the left 
+                    if (ismember(i,Cen2(:)) || ismember(i,L1))
+                        v = -1.5+v;
+                    else
+                        v = 1.5 +v;
+                    end
+                    u = u+ 2;
+                    UU(:,i) = obj.PIDs{i}.computeU(obj.simState.platforms{i}.getX(),[u;v;z],0);
+           end
         end
 
 

@@ -24,6 +24,7 @@ classdef TaskPlume_3<Task
         C; % completed array
         L;  % Nodes to the left of the centroid
         R;  % nodes to the right of the centroid
+        m; %ababujo: mass of UAVs
         mesh = 0;
         done = 0;
         time =0;
@@ -59,7 +60,7 @@ classdef TaskPlume_3<Task
             % these need to follow the conventions of axis(), they are in m, Z down
             % note that the lowest Z limit is the refence for the computation of wind shear and turbulence effects
             taskparams.environment.area.limits = [-60 60 -60 60 -60 0];
-            taskparams.environment.area.type = 'BoxWithObstaclesArea_3';
+            taskparams.environment.area.type = 'BoxWithObstaclesArea';
             
             % originutmcoords is the location of the RVC (our usual flying site)
             % generally when this is changed gpsspacesegment.orbitfile and
@@ -133,6 +134,7 @@ classdef TaskPlume_3<Task
                 obj.d{i} = 0;
                 obj.p{i} = 0;
                 obj.in{i} = 0;
+                obj.m{i} = 1;
                 obj.vt{i} = zeros(3,obj.durationInSteps);
                 j=j+1;
             end
@@ -144,6 +146,7 @@ classdef TaskPlume_3<Task
                 obj.d{i} = 0;
                 obj.p{i} = 0;
                 obj.in{i} = 0;
+                obj.m{i} = 1;
                 obj.vt{i} = zeros(3,obj.durationInSteps);
                 j=j+1;
             end
@@ -155,6 +158,7 @@ classdef TaskPlume_3<Task
                 obj.d{i} = 0;
                 obj.p{i} = 0;
                 obj.in{i} = 0;
+                obj.m{i} = 1;
                 obj.vt{i} = zeros(3,obj.durationInSteps);
                 j=j+1;
             end

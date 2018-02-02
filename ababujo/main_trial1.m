@@ -12,7 +12,7 @@ addpath(['..',filesep,'..',filesep,'controllers']);
 % create simulator object
 qrsim = QRSim();
 
-state = qrsim.init('TaskPlume_3');
+state = qrsim.init('TaskForceA');
 
 % reminder:
 % platforms in N1 -> no sensing features
@@ -25,9 +25,9 @@ N = state.task.N4 ;
 U = zeros(3,state.task.durationInSteps);
 tstart = tic;
 
-for i=1:state.task.durationInSteps,
+for i=1:state.task.durationInSteps
     tloop=tic;
-    for j=1:state.task.N4,
+    for j=1:state.task.N4
        if(state.platforms{j}.isValid())                  
           U(:,j) = [2;0;0];   
        end
