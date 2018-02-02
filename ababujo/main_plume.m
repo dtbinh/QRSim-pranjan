@@ -25,10 +25,12 @@ N = state.task.N4 ;
 U = zeros(3,state.task.durationInSteps);
 tstart = tic;
 
-for i=1:state.task.durationInSteps,
+% 
+
+for i=1:state.task.durationInSteps
     tloop=tic;
-    for j=1:state.task.N4,
-       if(state.platforms{j}.isValid())     % Why this? 
+    for j=1:state.task.N4
+       if state.platforms{j}.isValid()     % Why this? when a drone is dead it should not send it's coordinates.
            if state.send_coordinates == 1
                % Send UAVs coordinates. All the coordinates shall be available
                % before the next time quantum starts. We have kept it this way
