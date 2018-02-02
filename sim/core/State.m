@@ -17,7 +17,7 @@ classdef State<handle
         task;         % handle to the current task
         camerascnt_;  % cameras counter
         obstacles;      %ababujo
-        message_loss = 0  % pranjan. Message shall be lost or not? 0 = NO, 1 = YES.
+        message_loss = 1  % pranjan. Message shall be lost or not? 0 = NO, 1 = YES.
         repeat_plume_msg = 0 % pranjan. Repeatedly send plumeDetected message. 0= NO, 1 = YES.
         send_plume_detected = 0 % pranjan. Should a drone Send a plume detected message? 0=NO, 1= Yes
         send_coordinates = 1 % pranjan. Each drone shall advertise it's x,y,z coordinates
