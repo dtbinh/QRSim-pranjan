@@ -75,10 +75,10 @@ classdef TaskForceA<Task
              %ababujo:obstacles{Column - X Y Z(h) r}
            % taskparams.environment.area.obstacles = taskparams.environment.area.type.obstacles;
            taskparams.environment.area.obstacles = [ ];
-     %      taskparams.environment.area.plume = [30  
-     %            50
-     %            30
-     %            25];
+           taskparams.environment.area.plume = [30  
+                 50
+                 30
+                 25];
             % GPS
             % The space segment of the gps system
             taskparams.environment.gpsspacesegment.on = 0; %% NO GPS NOISE!!!
