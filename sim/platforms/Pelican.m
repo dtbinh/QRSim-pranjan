@@ -54,7 +54,11 @@ classdef Pelican<Steppable & Platform
     end
     
     properties (Access = public)
-        transmitter_strength = 20;  % pranjan in Db
+        % Source: http://www.ti.com/lit/ds/symlink/wl1805mod.pdf section 5.7
+        % 18 Mbps OFDM, TYP transmitter power,  
+        transmitter_strength = 17;  % pranjan in Dbm. WL18xxMOD WiLink™ Wi-Fi®  Used in Beaglebone black
+        receiver_threshold = -75; % pranjan in Dbm. same source. section 5.6.
+        transmission_frequency = 2400; % MHz
         d_min = 1;     % if distance between A and B is less than d_min, both experience a PUSH force.
         d_max = 35;     % If diatance between A and B is larger than d_max, both experience a PULL force.
         % Currently d_min and d_max are arbitrary. TODO: Decide on an
@@ -334,37 +338,60 @@ classdef Pelican<Steppable & Platform
             d = obj.senseD;
         end
         
+        function p = get_message_reception_probability(obj, T, D, F, Dth)
+            sigma = 10;     % Standard deviation for the gaussian random variable N
+            mmean = 0;       % Mean for the gaussian radom variable N
+            RecPower = obj.helper(T, D, F, mmean, sigma);
+            if RecPower  > Dth
+                p = 1;
+            else
+                p = 0;
+            end 
+        end
+
+        function RecPower = helper(~, T, D, F, mmean, sigma)
+            % T in Dbm
+            % D in m
+            % F in MHz
+            FSPL = 20 * log10(D/1000) + 20 * log10(F) + 32.44; % Free space path loss
+            N = normrnd(mmean, sigma);
+            %fprintf(" %f %f", FSPL, N);
+            RecPower = T - FSPL + N;
+        end
+
+        
         function outputArg = send_message(obj, uav_message, dst)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
-            %outputArg = uav_message.Property1 + inputArg;
             dest_coord = obj.simState.platforms{dst}.getX(1:3);
             uav_message.dest = dst;
-            euclid_distance = pdist2(uav_message.origin_coord, dest_coord);
-            src_transmission_strength = obj.simState.platforms{uav_message.src}.transmitter_strength;
+            D = pdist2(uav_message.origin_coord, dest_coord); % Eucledian Distance
+            %T = 90;
+            T = obj.simState.platforms{uav_message.src}.transmitter_strength; % Souce Transmission strength.
+            Dth = obj.simState.platforms{uav_message.dest}.receiver_threshold;
+            F = obj.simState.platforms{uav_message.src}.transmission_frequency; % Transmission Frequency
             %received = msg_receipt(src_transmission_strength, euclid_distance);
             if obj.simState.message_loss == 1
-                received = rand();
+                reception_probability = obj.get_message_reception_probability(T, D, F, Dth);
             else
-                received = 1;
+                reception_probability = 1;
             end
             ct = 0;
-            if received > 0.5
+            if reception_probability < 0.5  % 0.5 is the reception threshold
+                % Origin coodination coordinate set be zeroed out.
+                uav_message.origin_coord = [0,0,0];
                 %fprintf("\n%d Sent message to %d of type %s",uav_message.src, uav_message.dest, uav_message.data);
-                obj.simState.platforms{dst}.in_msg_queue = [obj.simState.platforms{dst}.in_msg_queue, uav_message];
-                ct = 1;
             end
+            obj.simState.platforms{dst}.in_msg_queue = [obj.simState.platforms{dst}.in_msg_queue, uav_message];
             outputArg = ct;
         end
         
         function out_message = read_plume_detected_message(obj, uav_no)
             out_message = [];
             if obj.simState.send_plume_detected == 1
-               if ~isempty(obj.in_msg_queue)
+                if ~isempty(obj.in_msg_queue)
                     out_message = obj.simState.platforms{uav_no}.in_msg_queue(1);
                     %obj.in_msg_queue(1) = [];  % remove the message from queue.
-               end
-            end        
+                end
+            end
         end
         
         function out = read_message(obj, uav_no)
@@ -378,15 +405,15 @@ classdef Pelican<Steppable & Platform
             nrows = length(obj.simState.platforms{uav_no}.in_msg_queue);
             out = [0,0];
             for i=1:nrows
-            %if nrows > 1
+                %if nrows > 1
                 
                 msg = obj.simState.platforms{uav_no}.in_msg_queue(i);
                 if msg.type == 2  % Coordinate update
                     obj.simState.platforms{uav_no}.uav_coord(:,msg.src) = msg.origin_coord;
                     out(2) = out(2) + 1;
                 elseif msg.type == 1  % Plume detected message
-                     obj.simState.platforms{uav_no}.plume_coord(:,msg.src) = msg.origin_coord;
-                     out(1) = out(1) + 1;
+                    obj.simState.platforms{uav_no}.plume_coord(:,msg.src) = msg.origin_coord;
+                    out(1) = out(1) + 1;
                 end
             end
             obj.simState.platforms{uav_no}.in_msg_queue = [];
@@ -409,7 +436,12 @@ classdef Pelican<Steppable & Platform
             if(sqrt(((xp-x)*(xp-x)) + ((yp-y)*(yp-y)) + ((zp+z)*(zp+z)))< r)  % why is zp + z instead of zp - z?
                 % Because, due to some unknown reason, z coordinate of plume is being displayed at -z
                 ob = 1;
+                if obj.simState.send_plume_detected == 0  % If drones don't send plume detected message.
+                    return
+                end
+
                 %velocity = obj.getX(7:9);
+
                 if ~isempty(obj.out_msg_queue) && ~obj.simState.repeat_plume_msg
                     % If the drone has already sent a message and should not repeat plume detected message; then don't resend it.
                     return
@@ -419,9 +451,6 @@ classdef Pelican<Steppable & Platform
                 msg = uav_message(j, obj.simState, "plumeDetected", 1);
                 if isempty(obj.out_msg_queue)
                     obj.out_msg_queue = [obj.out_msg_queue, msg];
-                end
-                if obj.simState.send_plume_detected == 0  % If drones don't send plume detected message.
-                    return
                 end
                 for k=1:length(obj.simState.platforms)
                     if k ~= j
@@ -617,7 +646,7 @@ classdef Pelican<Steppable & Platform
                 [obj.X obj.a] = ruku2('pelicanODE', obj.X, [US;meanWind + turbWind; obj.MASS; accNoise], obj.dt);
                 
                 if(isreal(obj.X)&& obj.thisStateIsWithinLimits(obj.X) && ~obj.inCollision())
-                %if(isreal(obj.X)&& obj.thisStateIsWithinLimits(obj.X) )
+                    %if(isreal(obj.X)&& obj.thisStateIsWithinLimits(obj.X) )
                     %ababujo:brought incollision check inside, as we dont
                     %want to discard all the platforms if there is a
                     %collision, but just bring the drone down to the ground

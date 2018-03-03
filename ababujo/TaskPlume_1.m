@@ -80,10 +80,9 @@ classdef TaskPlume_1<Task
             %ababujo:obstacles{Column - X Y Z(h) r}
             % taskparams.environment.area.obstacles = taskparams.environment.area.type.obstacles;
             taskparams.environment.area.obstacles = [ ];
-            taskparams.environment.area.plume = [10
-                40
-                25
-                9];  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.
+            taskparams.environment.area.plume = [10 40 25 9]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.
+            %taskparams.environment.area.plume = [10 40 25 13]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.            
+            
             % GPS
             % The space segment of the gps system
             taskparams.environment.gpsspacesegment.on = 0; %% NO GPS NOISE!!!
@@ -260,6 +259,11 @@ classdef TaskPlume_1<Task
                                         c_acc_vec = c_acc_vec + dir_vec * c_acc_mag;
                                         c_ct = c_ct + 1;
                                     end
+%                                 else
+%                                     if me ~= peer
+%                                         fprintf("yaay");
+%                                 
+%                                     end
                                 end
                             end
                         end
