@@ -21,6 +21,8 @@ classdef State<handle
         repeat_plume_msg = 0 % pranjan. Repeatedly send plumeDetected message. 0= NO, 1 = YES.
         send_plume_detected = 0 % pranjan. Should a drone Send a plume detected message? 0=NO, 1= Yes
         send_coordinates = 1 % pranjan. Each drone shall advertise it's x,y,z coordinates
+        forward_messages = 0 % pranjan. A drone should forward a message not destined for itself.
+        dist_scale = 25   % 1 unit on the 3D display is 'dist_scale' meters in actual.
     end
 end
 

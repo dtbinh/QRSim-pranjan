@@ -248,7 +248,7 @@ classdef TaskPlume_1<Task
                         c_ct = 0;
                         %c_acc_vec = [0;0;0];
                         for peer=1:N
-                            if obj.simState.platforms{peer}.isValid() == 1
+                            if me ~= peer && obj.simState.platforms{peer}.isValid() == 1
                                 peer_coord = obj.simState.platforms{me}.uav_coord(:,peer);
                                 if norm(peer_coord) ~= 0
                                     m_dst = pdist([my_coord';peer_coord'], 'euclidean');
@@ -259,11 +259,6 @@ classdef TaskPlume_1<Task
                                         c_acc_vec = c_acc_vec + dir_vec * c_acc_mag;
                                         c_ct = c_ct + 1;
                                     end
-%                                 else
-%                                     if me ~= peer
-%                                         fprintf("yaay");
-%                                 
-%                                     end
                                 end
                             end
                         end
