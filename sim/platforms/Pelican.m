@@ -364,6 +364,8 @@ classdef Pelican<Steppable & Platform
             dest_coord = obj.simState.platforms{dst}.getX(1:3);
             uav_message.dest = dst;
             D = pdist([uav_message.origin_coord'; dest_coord'], 'euclidean'); % Eucledian Distance
+            % Scale D
+            D = D * obj.simState.dist_scale;
             T = obj.simState.platforms{uav_message.src}.transmitter_strength; % Souce Transmission strength.
             Dth = obj.simState.platforms{uav_message.dest}.receiver_threshold;
             F = obj.simState.platforms{uav_message.src}.transmission_frequency; % Transmission Frequency
@@ -394,7 +396,7 @@ classdef Pelican<Steppable & Platform
         end
         
         function out = read_message(obj, uav_no)
-            % Method: Reads only one message from head of queue.
+            % % Method: Reads all the messages from the in-queue.
             
             % Iterate over each message in the queue.
             % If the message is a plume detected message append it to
