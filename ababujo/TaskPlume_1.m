@@ -209,6 +209,7 @@ classdef TaskPlume_1<Task
             % ob = obj.simState.platforms{i}.ObDetect();
             for me = 1: N
                 ob = obj.simState.platforms{me}.PlumeDetect(me);
+                % Check the message queue for any messages.
                 obj.simState.platforms{me}.read_message(me);
                 %if(ob ==1 || obj.simState.platforms{me}.isValid() == 0) % If a UAV detects a plume, or it collided with another drone, it stops
                 if(ob ==1)    
@@ -217,7 +218,6 @@ classdef TaskPlume_1<Task
                 elseif obj.simState.platforms{me}.isValid() == 0
                     UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(),[0;0;0],0);
                 else
-                    % Check the message queue for any messages.
                     ct = 0;
                     res_coord = [0;0;0];
                     p_acc_vec = [0;0;0];

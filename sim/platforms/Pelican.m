@@ -363,8 +363,7 @@ classdef Pelican<Steppable & Platform
         function outputArg = send_message(obj, uav_message, dst)
             dest_coord = obj.simState.platforms{dst}.getX(1:3);
             uav_message.dest = dst;
-            D = pdist2(uav_message.origin_coord, dest_coord); % Eucledian Distance
-            %T = 90;
+            D = pdist([uav_message.origin_coord'; dest_coord'], 'euclidean'); % Eucledian Distance
             T = obj.simState.platforms{uav_message.src}.transmitter_strength; % Souce Transmission strength.
             Dth = obj.simState.platforms{uav_message.dest}.receiver_threshold;
             F = obj.simState.platforms{uav_message.src}.transmission_frequency; % Transmission Frequency

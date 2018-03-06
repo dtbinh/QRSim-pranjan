@@ -25,26 +25,24 @@ N = state.task.N4 ;
 U = zeros(3,state.task.durationInSteps);
 tstart = tic;
 
-% 
-
 for i=1:state.task.durationInSteps
     tloop=tic;
-    for j=1:state.task.N4
-       if state.platforms{j}.isValid()     % Why this? when a drone is dead it should not send it's coordinates.
+    for src=1:state.task.N4
+       if state.platforms{src}.isValid()     % Why this? because when a drone is dead it should not send it's coordinates.
            if state.send_coordinates == 1
                % Send UAVs coordinates. All the coordinates shall be available
                % before the next time quantum starts. We have kept it this way
                % because, in our benchmarks the message processing +
                % transmission delay was much smaller than the timestep of 0.02
                % seconds.
-               msg = uav_message(j, state, "Coordinates", 2);
+               msg = uav_message(src, state, "Coordinates", 2);
                for k=1:state.task.N4
-                    if j ~= k
-                        state.platforms{j}.send_message(msg, k);
+                    if src ~= k
+                        state.platforms{src}.send_message(msg, k);
                     end
                end
            end
-           U(:,j) = [2;0;0];   
+           U(:,src) = [2;0;0];   
        end
     end
     % step simulator
