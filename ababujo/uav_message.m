@@ -17,9 +17,9 @@ classdef uav_message
             %MESSAGE Construct an instance of this class
             %   Detailed explanation goes here
             obj.id = char(java.util.UUID.randomUUID);
-            obj.timestamp = datetime('now');
+            obj.timestamp = posixtime(datetime('now'));
             obj.src = src;
-            %obj.dest = dest;
+            obj.dest = 0;  % 0 means broadcast message
             obj.origin_coord = sim_state.platforms{src}.getX(1:3);
             obj.data = data;
             obj.type = type;

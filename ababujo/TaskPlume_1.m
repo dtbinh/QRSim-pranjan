@@ -64,7 +64,7 @@ classdef TaskPlume_1<Task
             %%%%% environment %%%%%
             % these need to follow the conventions of axis(), they are in m, Z down
             % note that the lowest Z limit is the refence for the computation of wind shear and turbulence effects
-            taskparams.environment.area.limits = [-60 60 -60 60 -60 0];
+            taskparams.environment.area.limits = [-175 175 -150 150 -100 0]; %[-140 140 -140 140 -140 0];
             taskparams.environment.area.type = 'BoxWithObstaclesArea';
             
             % originutmcoords is the location of the RVC (our usual flying site)
@@ -80,7 +80,7 @@ classdef TaskPlume_1<Task
             %ababujo:obstacles{Column - X Y Z(h) r}
             % taskparams.environment.area.obstacles = taskparams.environment.area.type.obstacles;
             taskparams.environment.area.obstacles = [ ];
-            taskparams.environment.area.plume = [10 40 25 9]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.
+            taskparams.environment.area.plume = [10 40 50 40]'; %[10 40 25 9]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.
             %taskparams.environment.area.plume = [10 40 25 13]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.            
             
             % GPS
@@ -132,7 +132,7 @@ classdef TaskPlume_1<Task
         function reset(obj)
             j=0;
             for i=1:floor(obj.N4/3),
-                obj.simState.platforms{i}.setX([-10;50;-obj.hfix-10*j;0;0;0]);
+                obj.simState.platforms{i}.setX([-40;90;-obj.hfix-33*j;0;0;0]);
                 obj.PIDs{i} = VelocityPID(obj.simState.DT);
                 obj.f{i} = 0;
                 obj.d{i} = 0;
@@ -143,7 +143,7 @@ classdef TaskPlume_1<Task
             end
             j=0;
             for i=floor(obj.N4/3)+1:floor(2*obj.N4/3),
-                obj.simState.platforms{i}.setX([-10;40;-obj.hfix-10*j;0;0;0]);
+                obj.simState.platforms{i}.setX([-40;40;-obj.hfix-33*j;0;0;0]);
                 obj.PIDs{i} = VelocityPID(obj.simState.DT);
                 obj.f{i} = 0;
                 obj.d{i} = 0;
@@ -154,7 +154,7 @@ classdef TaskPlume_1<Task
             end
             j=0;
             for i=floor(2*obj.N4/3)+1:floor(obj.N4),
-                obj.simState.platforms{i}.setX([-10;30;-obj.hfix-10*j;0;0;0]);
+                obj.simState.platforms{i}.setX([-40;-20;-obj.hfix-33*j;0;0;0]);
                 obj.PIDs{i} = VelocityPID(obj.simState.DT);
                 obj.f{i} = 0;
                 obj.d{i} = 0;
@@ -174,11 +174,57 @@ classdef TaskPlume_1<Task
             end
         end
         
+        function f = helper(obj, d_ideal, m_dst, elastic, f_max)
+            buff = d_ideal * elastic;
+            d_max = d_ideal + buff;
+            d_max_2 = d_ideal + 2 * buff;
+
+            %d_min = d_ideal - buff;
+            %d_min_2 = d_ideal - 2 * buff;
+            
+            d_min = d_ideal - 2 * buff;
+            d_min_2 = 0;
+            
+            slope = f_max / buff;
+
+            neg_f_max = 2;
+            neg_slope = neg_f_max/buff;
+            
+            if m_dst >= d_max_2
+                f = f_max;
+            elseif m_dst <= d_max
+                f = 0;
+            else
+                f = (slope * (m_dst - d_max));
+            end
+        end
+    
+        function acc_mag = get_acceleration_mag_2(obj, m_dst, me, peer)
+            mass = obj.simState.platforms{me}.MASS;
+            f_max = obj.simState.platforms{me}.F_MAX;
+            
+            d_ideal = obj.simState.platforms{me}.distances(:,peer);  % Scale d_ideal.
+            d_ideal = d_ideal * obj.simState.dist_scale;
+            
+            % scale m_dst and d_ideal
+            m_dst = m_dst * obj.simState.dist_scale;
+            elastic = obj.simState.platforms{me}.elasticity;
+            force = obj.helper(d_ideal, m_dst, elastic, f_max);
+            acc_mag = force / mass;
+        end
+        
         function acc_mag = get_acceleration_mag(obj, m_dst, me, peer)
             mass = obj.simState.platforms{me}.MASS;
             f_max = obj.simState.platforms{me}.F_MAX;
-            d_ideal = obj.simState.platforms{me}.distances(:,peer);
-            elastic = obj.simState.platforms{me}.elasticity;
+            
+            d_ideal = obj.simState.platforms{me}.distances(:,peer);  % Scale d_ideal.
+            d_ideal = d_ideal * obj.simState.dist_scale;
+            
+            % scale m_dst and d_ideal
+            m_dst = m_dst * obj.simState.dist_scale;
+            
+            elastic = obj.simState.platforms{me}.elasticity;  
+            
             d_min = d_ideal*(elastic);  % TODO
             d_max = d_ideal*(1+elastic);
             d_max_ex = d_ideal * (1+2*elastic);
@@ -209,6 +255,7 @@ classdef TaskPlume_1<Task
             % ob = obj.simState.platforms{i}.ObDetect();
             for me = 1: N
                 ob = obj.simState.platforms{me}.PlumeDetect(me);
+                % Check the message queue for any messages.
                 obj.simState.platforms{me}.read_message(me);
                 %if(ob ==1 || obj.simState.platforms{me}.isValid() == 0) % If a UAV detects a plume, or it collided with another drone, it stops
                 if(ob ==1)    
@@ -217,7 +264,6 @@ classdef TaskPlume_1<Task
                 elseif obj.simState.platforms{me}.isValid() == 0
                     UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(),[0;0;0],0);
                 else
-                    % Check the message queue for any messages.
                     ct = 0;
                     res_coord = [0;0;0];
                     p_acc_vec = [0;0;0];
@@ -248,22 +294,17 @@ classdef TaskPlume_1<Task
                         c_ct = 0;
                         %c_acc_vec = [0;0;0];
                         for peer=1:N
-                            if obj.simState.platforms{peer}.isValid() == 1
+                            if me ~= peer && obj.simState.platforms{peer}.isValid() == 1
                                 peer_coord = obj.simState.platforms{me}.uav_coord(:,peer);
                                 if norm(peer_coord) ~= 0
                                     m_dst = pdist([my_coord';peer_coord'], 'euclidean');
-                                    c_acc_mag = obj.get_acceleration_mag(m_dst, me, peer);
+                                    c_acc_mag = obj.get_acceleration_mag_2(m_dst, me, peer);
                                     if c_acc_mag ~= 0
                                         dir_vec = (peer_coord - my_coord);
                                         dir_vec = dir_vec / norm(dir_vec);
                                         c_acc_vec = c_acc_vec + dir_vec * c_acc_mag;
                                         c_ct = c_ct + 1;
                                     end
-%                                 else
-%                                     if me ~= peer
-%                                         fprintf("yaay");
-%                                 
-%                                     end
                                 end
                             end
                         end
