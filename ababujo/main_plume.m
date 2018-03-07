@@ -35,12 +35,7 @@ for i=1:state.task.durationInSteps
                % because, in our benchmarks the message processing +
                % transmission delay was much smaller than the timestep of 0.02
                % seconds.
-               msg = uav_message(src, state, "Coordinates", 2);
-               for k=1:state.task.N4
-                    if src ~= k
-                        state.platforms{src}.send_message(msg, k);
-                    end
-               end
+               state.platforms{src}.broadcast_coordinates(src);
            end
            U(:,src) = [2;0;0];   
        end

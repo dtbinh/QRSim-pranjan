@@ -68,6 +68,7 @@ classdef Pelican<Steppable & Platform
         out_msg_queue;  % pranjan.
         uav_coord;      % pranjan. A platform shall store the coordinates of other UAVs. This info shall be collected through messages.
         plume_coord;    % pranjan. A platform shall store the coordinates where plumes have been detected.
+        peer_contact_time; % pranjan. The last time this peer had contacted.
         distances = [];      % pranjan. Ideal distance to other drones.
         elasticity = 0.1;     % pranjan. Explanation coming soon....
     end
@@ -132,6 +133,7 @@ classdef Pelican<Steppable & Platform
             %obj.transmitter_strength = 20;  % pranjan TODO: Initialize it through objparams.
             obj.uav_coord = zeros(3, obj.simState.task.N4);
             obj.plume_coord = zeros(3, obj.simState.task.N4);
+            obj.peer_contact_time(1: obj.simState.task.N4) = posixtime(datetime('now'));
             if(isfield(objparams,'behaviourIfStateNotValid'))
                 obj.behaviourIfStateNotValid = objparams.behaviourIfStateNotValid;
             end
@@ -359,30 +361,51 @@ classdef Pelican<Steppable & Platform
             RecPower = T - FSPL + N;
         end
 
+        function broadcast_coordinates(obj, src)
+            msg = uav_message(src, obj.simState, "Coordinates", 2);
+            msg.dest = 0; % 0 means broadcast message
+            for dst=1:obj.simState.task.N4
+                if src ~= dst
+                    obj.send_message(msg, src, dst);
+                end
+            end
+        end
         
-        function outputArg = send_message(obj, uav_message, dst)
+        function outputArg = send_message(obj, msg, transmitter, dst)
             dest_coord = obj.simState.platforms{dst}.getX(1:3);
-            uav_message.dest = dst;
-            D = pdist([uav_message.origin_coord'; dest_coord'], 'euclidean'); % Eucledian Distance
-            % Scale D
-            D = D * obj.simState.dist_scale;
-            T = obj.simState.platforms{uav_message.src}.transmitter_strength; % Souce Transmission strength.
-            Dth = obj.simState.platforms{uav_message.dest}.receiver_threshold;
-            F = obj.simState.platforms{uav_message.src}.transmission_frequency; % Transmission Frequency
-            %received = msg_receipt(src_transmission_strength, euclid_distance);
-            if obj.simState.message_loss == 1
-                reception_probability = obj.get_message_reception_probability(T, D, F, Dth);
-            else
-                reception_probability = 1;
+            last_contact_time = obj.simState.platforms{dst}.peer_contact_time(msg.src);
+            res = 0;
+            if msg.src ~= dst && transmitter ~= dst && msg.timestamp > last_contact_time 
+                transmitter_coord = obj.simState.platforms{transmitter}.getX(1:3);
+                D = pdist([transmitter_coord'; dest_coord'], 'euclidean'); % Eucledian Distance
+                D = D * obj.simState.dist_scale; % Scale D      
+                T = obj.simState.platforms{transmitter}.transmitter_strength; % Souce Transmission strength.
+                Dth = obj.simState.platforms{dst}.receiver_threshold;
+                F = obj.simState.platforms{transmitter}.transmission_frequency; % Transmission Frequency
+                if obj.simState.message_loss == 1
+                    reception_probability = obj.get_message_reception_probability(T, D, F, Dth);
+                else
+                    reception_probability = 1;
+                end
+                if reception_probability < 0.5  % 0.5 is the reception threshold
+                    % Origin coordinate should be zeroed out.
+                    obj.simState.platforms{dst}.uav_coord(:,msg.src) = [0,0,0];
+                else
+                    res = 1;
+                    % Update peer contact time in dst for msg.src
+                    obj.simState.platforms{dst}.peer_contact_time(msg.src) = msg.timestamp;
+                    % Deliver the message in the in_msg_queue of destination.
+                    obj.simState.platforms{dst}.in_msg_queue = [obj.simState.platforms{dst}.in_msg_queue, msg];
+                    if msg.dest == 0 && obj.simState.forward_messages == 1
+                        % This is a broadcast message and the drones
+                        % should forward messages.
+                        for new_dst=1:obj.simState.task.N4
+                            obj.send_message(msg, dst, new_dst);
+                        end
+                    end
+                end
             end
-            ct = 0;
-            if reception_probability < 0.5  % 0.5 is the reception threshold
-                % Origin coodination coordinate set be zeroed out.
-                uav_message.origin_coord = [0,0,0];
-                %fprintf("\n%d Sent message to %d of type %s",uav_message.src, uav_message.dest, uav_message.data);
-            end
-            obj.simState.platforms{dst}.in_msg_queue = [obj.simState.platforms{dst}.in_msg_queue, uav_message];
-            outputArg = ct;
+            outputArg = res;
         end
         
         function out_message = read_plume_detected_message(obj, uav_no)
@@ -406,12 +429,13 @@ classdef Pelican<Steppable & Platform
             nrows = length(obj.simState.platforms{uav_no}.in_msg_queue);
             out = [0,0];
             for i=1:nrows
-                %if nrows > 1
-                
                 msg = obj.simState.platforms{uav_no}.in_msg_queue(i);
                 if msg.type == 2  % Coordinate update
-                    obj.simState.platforms{uav_no}.uav_coord(:,msg.src) = msg.origin_coord;
-                    out(2) = out(2) + 1;
+                    %last_contact_time = obj.simState.platforms{uav_no}.peer_contact_time(msg.src);
+                    %if last_contact_time <= msg.timestamp
+                        obj.simState.platforms{uav_no}.uav_coord(:,msg.src) = msg.origin_coord;
+                        out(2) = out(2) + 1;
+                    %end
                 elseif msg.type == 1  % Plume detected message
                     obj.simState.platforms{uav_no}.plume_coord(:,msg.src) = msg.origin_coord;
                     out(1) = out(1) + 1;
@@ -420,10 +444,9 @@ classdef Pelican<Steppable & Platform
             obj.simState.platforms{uav_no}.in_msg_queue = [];
         end
         
-        function ob = PlumeDetect(obj, j)
+        function ob = PlumeDetect(obj, uav_no)
             % ababujo: Global code if this platform detects any obstacle or
             % other drone in its sensing distance
-            % j is uav_no
             ob = 0 ;
             
             x = obj.X(1);
@@ -449,13 +472,13 @@ classdef Pelican<Steppable & Platform
                 end
                 
                 % Create a message with data as plumedetect
-                msg = uav_message(j, obj.simState, "plumeDetected", 1);
+                msg = uav_message(uav_no, obj.simState, "plumeDetected", 1);
                 if isempty(obj.out_msg_queue)
                     obj.out_msg_queue = [obj.out_msg_queue, msg];
                 end
-                for k=1:length(obj.simState.platforms)
-                    if k ~= j
-                        obj.send_message(msg, k);  % For each other platform call send message
+                for dst=1:length(obj.simState.platforms)
+                    if dst ~= uav_no
+                        obj.send_message(msg, uav_no, dst);  % For each other platform call send message
                     end
                 end
                 %obj.simState.task.p{j} = 1;

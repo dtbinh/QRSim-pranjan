@@ -174,6 +174,45 @@ classdef TaskPlume_1<Task
             end
         end
         
+        function f = helper(obj, d_ideal, m_dst, elastic, f_max)
+            buff = d_ideal * elastic;
+            d_max = d_ideal + buff;
+            d_max_2 = d_ideal + 2 * buff;
+
+            d_min = d_ideal - buff;
+            d_min_2 = d_ideal - 2 * buff;
+            
+            %d_min = d_ideal - 2 * buff;
+            %d_min_2 = 0;
+            
+            slope = f_max / buff;
+            if m_dst >= d_max_2
+                f = f_max;
+            elseif m_dst <= d_min_2
+                f = -f_max;
+            elseif m_dst >= d_min && m_dst <= d_max
+                f = 0;
+            elseif m_dst < d_min
+                f = -(slope * (d_min - m_dst));
+            else
+                f = (slope * (m_dst - d_max));
+            end
+        end    
+        
+        function acc_mag = get_acceleration_mag_2(obj, m_dst, me, peer)
+            mass = obj.simState.platforms{me}.MASS;
+            f_max = obj.simState.platforms{me}.F_MAX;
+            
+            d_ideal = obj.simState.platforms{me}.distances(:,peer);  % Scale d_ideal.
+            %d_ideal = d_ideal * obj.simState.dist_scale;
+            
+            % scale m_dst and d_ideal
+            %m_dst = m_dst * obj.simState.dist_scale;
+            elastic = obj.simState.platforms{me}.elasticity;
+            force = obj.helper(d_ideal, m_dst, elastic, f_max);
+            acc_mag = force / mass;
+        end
+           
         function acc_mag = get_acceleration_mag(obj, m_dst, me, peer)
             mass = obj.simState.platforms{me}.MASS;
             f_max = obj.simState.platforms{me}.F_MAX;
