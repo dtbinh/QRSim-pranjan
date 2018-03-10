@@ -221,6 +221,54 @@ classdef QRSim<handle
     end
     
     methods (Access=public)
+        
+        function broadcast_coordinates(obj)
+            % In this loop all drones generate a new message and broadcast
+            % them.
+            for origin=1:obj.simState.task.N4
+                if obj.simState.platforms{origin}.isValid()     % Why this? because when a drone is dead it should not send it's coordinates.
+                    msg = uav_message(origin, obj.simState, "Coordinates", 2);
+                    for dst=1:obj.simState.task.N4
+                        obj.simState.platforms{origin}.send_message(msg, origin, dst);
+                    end
+                end
+            end
+            if obj.simState.forward_messages == 0
+                return
+            end
+            % In this loop all the messages in the network are being
+            % forwarded untill the broadcast dies out.
+            done = 0;
+            while done == 0
+                done = 1;
+                for drone=1:obj.simState.task.N4
+                    nmsgs = length(obj.simState.platforms{drone}.in_msg_queue);
+                    if nmsgs == 0
+                        done = done && 1;
+                    else
+                        done = done && 0;
+                        for i = 1:nmsgs
+                            msg = obj.simState.platforms{drone}.in_msg_queue(i);
+                            if msg.src == drone
+                                continue
+                            end
+                            last_contact_ts = obj.simState.platforms{drone}.peer_contact_time(msg.src);
+                            if last_contact_ts < msg.timestamp
+                                obj.simState.platforms{drone}.peer_contact_time(msg.src) = msg.timestamp;
+                                obj.simState.platforms{drone}.uav_coord(:,msg.src) = msg.origin_coord;
+                                for dst = 1:obj.simState.task.N4
+                                    obj.simState.platforms{drone}.send_message(msg, drone, dst);
+                                end
+                            end
+                        end
+                        % All the messages in the current drone's in_msg_queue have been read. Hence empty out the in_queue
+                        obj.simState.platforms{drone}.in_msg_queue = [];  
+                    end
+                end
+            end
+        end
+
+        
         function delete(obj)
             % destructor, cleans the path
             % this is called automatically by Matlab when using clear on a QRSim object.
@@ -293,6 +341,7 @@ classdef QRSim<handle
             
             %%% instantiates the platform objects
             assert(isfield(obj.par,'platforms')&&(~isempty(obj.par.platforms)),'qrsim:noplatforms','the task must define at least one platform');
+            
             for i=1:length(obj.par.platforms)
                 assert(isfield(obj.par.platforms(i),'configfile'),'qrsim:noplatforms','the task must define a configfile for each platform');
                 p = loadPlatformConfig(obj.par.platforms(i).configfile, obj.par);

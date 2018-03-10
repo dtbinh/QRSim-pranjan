@@ -131,7 +131,7 @@ classdef TaskPlume_1<Task
         % and in this case the PIDs
         function reset(obj)
             j=0;
-            for i=1:floor(obj.N4/3),
+            for i=1:floor(obj.N4/3)  % i = 1,2,3
                 obj.simState.platforms{i}.setX([-10;50;-obj.hfix-10*j;0;0;0]);
                 obj.PIDs{i} = VelocityPID(obj.simState.DT);
                 obj.f{i} = 0;
@@ -142,7 +142,7 @@ classdef TaskPlume_1<Task
                 j=j+1;
             end
             j=0;
-            for i=floor(obj.N4/3)+1:floor(2*obj.N4/3),
+            for i=floor(obj.N4/3)+1:floor(2*obj.N4/3)  % i = 4,5,6
                 obj.simState.platforms{i}.setX([-10;40;-obj.hfix-10*j;0;0;0]);
                 obj.PIDs{i} = VelocityPID(obj.simState.DT);
                 obj.f{i} = 0;
@@ -153,7 +153,7 @@ classdef TaskPlume_1<Task
                 j=j+1;
             end
             j=0;
-            for i=floor(2*obj.N4/3)+1:floor(obj.N4),
+            for i=floor(2*obj.N4/3)+1:floor(obj.N4)  % i = 7,8,9
                 obj.simState.platforms{i}.setX([-10;30;-obj.hfix-10*j;0;0;0]);
                 obj.PIDs{i} = VelocityPID(obj.simState.DT);
                 obj.f{i} = 0;
@@ -173,8 +173,56 @@ classdef TaskPlume_1<Task
                 end
             end
         end
-        
+  
         function f = helper(obj, d_ideal, m_dst, elastic, f_max)
+            % Inverse sine
+            elastic = 0.2;
+            buff = d_ideal * elastic;
+            d_max = d_ideal + buff;
+            d_min = d_ideal - buff;
+            if m_dst <= d_max
+                f = 0;
+                return
+            end
+            d_max_2 = d_ideal +  buff;
+            d_min_2 = d_ideal - buff;
+            if m_dst > d_max_2
+                f = f_max;
+                return
+            elseif m_dst < d_min_2
+                f = -f_max;
+                return
+            end
+            x  = 1.15 / buff;
+            x_dst = m_dst - d_ideal;
+            %f = 0;
+            f = sinh(x_dst*x);
+        end
+        
+       function f = helper_y(obj, d_ideal, m_dst, elastic, f_max)
+            % skewed
+            buff = d_ideal * elastic;
+            d_max = d_ideal + buff;
+            d_max_2 = d_ideal + 2 * buff;
+
+            d_min = d_ideal - buff;
+            d_min_2 = d_ideal - 2 * buff;
+            
+            %d_min = d_ideal - 2 * buff;
+            %d_min_2 = 0;
+            
+            slope = f_max / buff;
+            if m_dst >= d_max_2
+                f = f_max;
+            elseif m_dst <= d_max
+                f = 0;
+            else
+                f = (slope * (m_dst - d_max));
+            end
+       end    
+        
+        function f = helper1(obj, d_ideal, m_dst, elastic, f_max)
+            % Even force field.
             buff = d_ideal * elastic;
             d_max = d_ideal + buff;
             d_max_2 = d_ideal + 2 * buff;
@@ -214,6 +262,7 @@ classdef TaskPlume_1<Task
         end
            
         function acc_mag = get_acceleration_mag(obj, m_dst, me, peer)
+            %Skewed force field. OK.
             mass = obj.simState.platforms{me}.MASS;
             f_max = obj.simState.platforms{me}.F_MAX;
             d_ideal = obj.simState.platforms{me}.distances(:,peer);
@@ -249,13 +298,12 @@ classdef TaskPlume_1<Task
             for me = 1: N
                 ob = obj.simState.platforms{me}.PlumeDetect(me);
                 % Check the message queue for any messages.
-                obj.simState.platforms{me}.read_message(me);
-                %if(ob ==1 || obj.simState.platforms{me}.isValid() == 0) % If a UAV detects a plume, or it collided with another drone, it stops
-                if(ob ==1)    
+                %obj.simState.platforms{me}.read_message(me);  % Not needed
+                %with the current broadcast message implementation.
+                if(ob ==1 || obj.simState.platforms{me}.isValid() == 0) % If a UAV detects a plume, or it collided with another drone, it stops
                     UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(),[0;0;0],0);
+                    %obj.simState.platforms{me}.setTrajectoryjLineWidth(10);
                     %obj.vt{i} = [obj.vt{i},[0 ;0 ;0]];  % Why this?
-                elseif obj.simState.platforms{me}.isValid() == 0
-                    UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(),[0;0;0],0);
                 else
                     ct = 0;
                     res_coord = [0;0;0];
@@ -301,17 +349,20 @@ classdef TaskPlume_1<Task
                                 end
                             end
                         end
-                        if c_ct > 0
+                        if c_ct > 1
                             c_acc_vec = c_acc_vec / c_ct;
                         end
                     end
                     %res_acc_vec = [0;0;0];
-                    if norm(c_acc_vec) ~= 0 && norm(p_acc_vec) ~= 0
+                    if  norm(p_acc_vec) ~= 0 && norm(c_acc_vec) ~= 0 
                         res_acc_vec = (c_acc_vec + p_acc_vec)/2;
                     else
                         res_acc_vec = c_acc_vec + p_acc_vec;
                     end
                     if norm(res_acc_vec) ~= 0
+                        %if me == 1 || me == 3
+                            quiver3(my_coord(1),my_coord(2),my_coord(3), res_acc_vec(1), res_acc_vec(2), res_acc_vec(3));
+                        %end
                         vel_vec_initial = obj.simState.platforms{me}.getX(7:9);
                         vel_vec_target = vel_vec_initial + res_acc_vec * obj.simState.task.dt;
                         UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(), vel_vec_target, 0);
