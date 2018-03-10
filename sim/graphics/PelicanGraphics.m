@@ -31,7 +31,7 @@ classdef PelicanGraphics<QuadrotorGraphics
         renderCnt = 0;  % ref counter for this graphics object      
         lw;             % trajectory line widthd
         trjLength;      % displayed trajectory length  
-        
+        trjColor;       % displayed trajectory color
         color;          % color
     end
     
@@ -88,6 +88,12 @@ classdef PelicanGraphics<QuadrotorGraphics
                 obj.trjLength = objparams.trjLength;
             else
                 obj.trjLength = 100;
+            end
+            
+            if (isfield(objparams, 'trjColor'))
+                obj.trjColor = objparams.trjColor;
+            else
+                obj.trjColor = 'black';
             end
             
             if (isfield(objparams,'alphaValue'))
@@ -185,7 +191,7 @@ classdef PelicanGraphics<QuadrotorGraphics
                     obj.gHandle.trjData.y = obj.X(2);
                     obj.gHandle.trjData.z = obj.X(3);
                     obj.gHandle.trjLine = line('XData',obj.gHandle.trjData.x,'YData',obj.gHandle.trjData.y,...
-                    'ZData',obj.gHandle.trjData.z,'LineWidth',obj.lw);
+                    'ZData',obj.gHandle.trjData.z,'LineWidth',obj.lw, 'color', obj.trjColor);
                 else
                     obj.gHandle.trjData.x = [obj.gHandle.trjData.x(s:end) obj.X(1)];
                     obj.gHandle.trjData.y = [obj.gHandle.trjData.y(s:end) obj.X(2)];
@@ -205,9 +211,17 @@ classdef PelicanGraphics<QuadrotorGraphics
             obj.gHandle.trjData.z = [];
         end
         
-        function obj = setTrjLw(obj,lw)
+        function obj = setTrajectoryjLineWidth(obj, lw)
             % sets trajectory line width
-            obj.lw = lw;
+            set(obj.gHandle.trjLine, 'LineWidth', lw);
+        end
+        
+        function setTrajectoryColor(obj, color)
+            obj.trjColor = color;
+        end
+        
+        function setObjColor(obj, color)
+            obj.color = color;
         end
     end
     

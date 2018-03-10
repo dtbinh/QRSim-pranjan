@@ -25,24 +25,34 @@ N = state.task.N4 ;
 U = zeros(3,state.task.durationInSteps);
 tstart = tic;
 
+traj_colors = ["black", "red", "blue"];
+for i = 1:state.task.N4
+    state.platforms{i}.setTrajectoryColor(traj_colors(mod(i, length(traj_colors))+1));
+end
+
 for i=1:state.task.durationInSteps
     tloop=tic;
     for src=1:state.task.N4
        if state.platforms{src}.isValid()     % Why this? because when a drone is dead it should not send it's coordinates.
-           if state.send_coordinates == 1
-               % Send UAVs coordinates. All the coordinates shall be available
-               % before the next time quantum starts. We have kept it this way
-               % because, in our benchmarks the message processing +
-               % transmission delay was much smaller than the timestep of 0.02
-               % seconds.
-               state.platforms{src}.broadcast_coordinates(src);
-           end
            U(:,src) = [2;0;0];   
        end
     end
+    % Send UAVs coordinates. All the coordinates shall be available
+    % before the next time quantum starts. We have kept it this way
+    % because, in our benchmarks the message processing +
+    % transmission delay was much smaller than the timestep of 0.02
+    % seconds.
+    if state.send_coordinates == 1
+        qrsim.broadcast_coordinates();
+    end
     % step simulator
     qrsim.step(U);
-    
+    % TODO: zero out all the coordinates.
+    for d1=1:state.task.N4
+        for d2= 1:state.task.N4
+            state.platforms{d1}.uav_coord(:,d2) = [0,0,0];
+        end
+    end
     if(state.display3dOn)
         % wait so to run in real time
         % this can be commented out obviously

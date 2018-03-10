@@ -48,7 +48,7 @@ classdef Pelican<Steppable & Platform
         % pelicanODE function
         G = 9.81;    %  gravity m/s^2
         MASS = 1.68; %  mass of the platform Kg
-        F_MAX = 5;   %  pranjan. Unit: Newton. The magnitude of the maximum force (Push or pull) that a drone shall experience when it goes out of range. i.e. <d_min or >d_max
+        F_MAX = 25;   %  pranjan. Unit: Newton. The magnitude of the maximum force (Push or pull) that a drone shall experience when it goes out of range. i.e. <d_min or >d_max
         F_PLUME = 5; % pranjan. Newton. The force experienced when a drone gets a plume detected message.
         labels = {'px','py','pz','phi','theta','psi','u','v','w','p','q','r','thrust'};
     end
@@ -343,7 +343,7 @@ classdef Pelican<Steppable & Platform
         function p = get_message_reception_probability(obj, T, D, F, Dth)
             sigma = 10;     % Standard deviation for the gaussian random variable N
             mmean = 0;       % Mean for the gaussian radom variable N
-            RecPower = obj.helper(T, D, F, mmean, sigma);
+            RecPower = obj.get_rec_power(T, D, F, mmean, sigma);
             if RecPower  > Dth
                 p = 1;
             else
@@ -351,7 +351,7 @@ classdef Pelican<Steppable & Platform
             end 
         end
 
-        function RecPower = helper(~, T, D, F, mmean, sigma)
+        function RecPower = get_rec_power(~, T, D, F, mmean, sigma)
             % T in Dbm
             % D in m
             % F in MHz
@@ -360,22 +360,10 @@ classdef Pelican<Steppable & Platform
             %fprintf(" %f %f", FSPL, N);
             RecPower = T - FSPL + N;
         end
-
-        function broadcast_coordinates(obj, src)
-            msg = uav_message(src, obj.simState, "Coordinates", 2);
-            msg.dest = 0; % 0 means broadcast message
-            for dst=1:obj.simState.task.N4
-                if src ~= dst
-                    obj.send_message(msg, src, dst);
-                end
-            end
-        end
         
-        function outputArg = send_message(obj, msg, transmitter, dst)
-            dest_coord = obj.simState.platforms{dst}.getX(1:3);
-            last_contact_time = obj.simState.platforms{dst}.peer_contact_time(msg.src);
-            res = 0;
-            if msg.src ~= dst && transmitter ~= dst && msg.timestamp > last_contact_time 
+        function success = send_message(obj, msg, transmitter, dst)
+            if transmitter ~= dst
+                dest_coord = obj.simState.platforms{dst}.getX(1:3);
                 transmitter_coord = obj.simState.platforms{transmitter}.getX(1:3);
                 D = pdist([transmitter_coord'; dest_coord'], 'euclidean'); % Eucledian Distance
                 D = D * obj.simState.dist_scale; % Scale D      
@@ -387,25 +375,16 @@ classdef Pelican<Steppable & Platform
                 else
                     reception_probability = 1;
                 end
-                if reception_probability < 0.5  % 0.5 is the reception threshold
+                if reception_probability < 0.5
                     % Origin coordinate should be zeroed out.
-                    obj.simState.platforms{dst}.uav_coord(:,msg.src) = [0,0,0];
+                    %obj.simState.platforms{dst}.uav_coord(:,msg.src) = [0,0,0];
+                    success = 0;
                 else
-                    res = 1;
-                    % Update peer contact time in dst for msg.src
-                    obj.simState.platforms{dst}.peer_contact_time(msg.src) = msg.timestamp;
+                    success = 1;
                     % Deliver the message in the in_msg_queue of destination.
                     obj.simState.platforms{dst}.in_msg_queue = [obj.simState.platforms{dst}.in_msg_queue, msg];
-                    if msg.dest == 0 && obj.simState.forward_messages == 1
-                        % This is a broadcast message and the drones
-                        % should forward messages.
-                        for new_dst=1:obj.simState.task.N4
-                            obj.send_message(msg, dst, new_dst);
-                        end
-                    end
                 end
             end
-            outputArg = res;
         end
         
         function out_message = read_plume_detected_message(obj, uav_no)
@@ -419,6 +398,7 @@ classdef Pelican<Steppable & Platform
         end
         
         function out = read_message(obj, uav_no)
+            % Outdated. 
             % % Method: Reads all the messages from the in-queue.
             
             % Iterate over each message in the queue.
@@ -510,6 +490,13 @@ classdef Pelican<Steppable & Platform
             end
         end
         
+        function setTrajectoryColor(obj, color)
+            obj.graphics.setTrajectoryColor(color);
+        end
+        
+        function setTrajectoryjLineWidth(obj, lw)
+            obj.graphics.setTrajectoryjLineWidth(lw);
+        end
     end
     
     methods (Sealed,Access=protected)

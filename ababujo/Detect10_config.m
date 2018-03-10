@@ -90,3 +90,5 @@ c.graphics.BT = 0.08;      % body thickness m
 c.graphics.R = 0.08;       % rotor radius m 
 c.graphics.DFT = 0.02;     % distance from truss m
 c.graphics.trjLength = 100000;
+%c.graphics.color = 'red';
+%c.graphics.trjColor = 'red'; % pranjan trajectory color
