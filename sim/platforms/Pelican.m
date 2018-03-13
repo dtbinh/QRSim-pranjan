@@ -48,7 +48,7 @@ classdef Pelican<Steppable & Platform
         % pelicanODE function
         G = 9.81;    %  gravity m/s^2
         MASS = 1.68; %  mass of the platform Kg
-        F_MAX = 25;   %  pranjan. Unit: Newton. The magnitude of the maximum force (Push or pull) that a drone shall experience when it goes out of range. i.e. <d_min or >d_max
+        F_MAX = 5;   %  pranjan. Unit: Newton. The magnitude of the maximum force (Push or pull) that a drone shall experience when it goes out of range. i.e. <d_min or >d_max
         F_PLUME = 5; % pranjan. Newton. The force experienced when a drone gets a plume detected message.
         labels = {'px','py','pz','phi','theta','psi','u','v','w','p','q','r','thrust'};
     end

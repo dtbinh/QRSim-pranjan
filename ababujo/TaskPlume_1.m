@@ -174,117 +174,18 @@ classdef TaskPlume_1<Task
             end
         end
   
-        function f = helper(obj, d_ideal, m_dst, elastic, f_max)
-            % Inverse sine
-            elastic = 0.2;
-            buff = d_ideal * elastic;
-            d_max = d_ideal + buff;
-            d_min = d_ideal - buff;
-            if m_dst <= d_max
-                f = 0;
-                return
-            end
-            d_max_2 = d_ideal +  buff;
-            d_min_2 = d_ideal - buff;
-            if m_dst > d_max_2
-                f = f_max;
-                return
-            elseif m_dst < d_min_2
-                f = -f_max;
-                return
-            end
-            x  = 1.15 / buff;
-            x_dst = m_dst - d_ideal;
-            %f = 0;
-            f = sinh(x_dst*x);
-        end
-        
-       function f = helper_y(obj, d_ideal, m_dst, elastic, f_max)
-            % skewed
-            buff = d_ideal * elastic;
-            d_max = d_ideal + buff;
-            d_max_2 = d_ideal + 2 * buff;
 
-            d_min = d_ideal - buff;
-            d_min_2 = d_ideal - 2 * buff;
-            
-            %d_min = d_ideal - 2 * buff;
-            %d_min_2 = 0;
-            
-            slope = f_max / buff;
-            if m_dst >= d_max_2
-                f = f_max;
-            elseif m_dst <= d_max
-                f = 0;
-            else
-                f = (slope * (m_dst - d_max));
-            end
-       end    
-        
-        function f = helper1(obj, d_ideal, m_dst, elastic, f_max)
-            % Even force field.
-            buff = d_ideal * elastic;
-            d_max = d_ideal + buff;
-            d_max_2 = d_ideal + 2 * buff;
-
-            d_min = d_ideal - buff;
-            d_min_2 = d_ideal - 2 * buff;
-            
-            %d_min = d_ideal - 2 * buff;
-            %d_min_2 = 0;
-            
-            slope = f_max / buff;
-            if m_dst >= d_max_2
-                f = f_max;
-            elseif m_dst <= d_min_2
-                f = -f_max;
-            elseif m_dst >= d_min && m_dst <= d_max
-                f = 0;
-            elseif m_dst < d_min
-                f = -(slope * (d_min - m_dst));
-            else
-                f = (slope * (m_dst - d_max));
-            end
-        end    
-        
-        function acc_mag = get_acceleration_mag_2(obj, m_dst, me, peer)
+        function acc_mag = get_acceleration_mag(obj, m_dst, me, peer)
             mass = obj.simState.platforms{me}.MASS;
             f_max = obj.simState.platforms{me}.F_MAX;
             
             d_ideal = obj.simState.platforms{me}.distances(:,peer);  % Scale d_ideal.
-            %d_ideal = d_ideal * obj.simState.dist_scale;
-            
             % scale m_dst and d_ideal
+            %d_ideal = d_ideal * obj.simState.dist_scale;
             %m_dst = m_dst * obj.simState.dist_scale;
             elastic = obj.simState.platforms{me}.elasticity;
-            force = obj.helper(d_ideal, m_dst, elastic, f_max);
+            force = force_fields("skewed_force_field", d_ideal, m_dst, elastic, f_max);%.even_force_field();
             acc_mag = force / mass;
-        end
-           
-        function acc_mag = get_acceleration_mag(obj, m_dst, me, peer)
-            %Skewed force field. OK.
-            mass = obj.simState.platforms{me}.MASS;
-            f_max = obj.simState.platforms{me}.F_MAX;
-            d_ideal = obj.simState.platforms{me}.distances(:,peer);
-            elastic = obj.simState.platforms{me}.elasticity;
-            d_min = d_ideal*(elastic);  % TODO
-            d_max = d_ideal*(1+elastic);
-            d_max_ex = d_ideal * (1+2*elastic);
-            %d_max = obj.simState.platforms{me}.d_max;
-            %quart = (d_max - d_min)/8;
-            m_base = d_min;
-            p_base = d_max_ex - d_max;
-            F = 0;
-            if m_dst >= d_min && m_dst <= d_max
-                F = 0;
-            elseif m_dst < d_min
-                F = -((f_max/m_base) * (d_min - m_dst));
-            elseif m_dst > d_max_ex
-                F = f_max;
-            elseif m_dst > d_max
-                F = (f_max/p_base) * (m_dst - d_max);
-            end
-            acc_mag = F/mass;
         end
         
         % in step(), the drone takes a step based on its relative position
