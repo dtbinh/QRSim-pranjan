@@ -1,8 +1,10 @@
 function f = force_fields(fn, d_ideal, m_dst, elastic, f_max)
-    if fn == "sigmoid_field"
-        f = sigmoid_field(d_ideal, m_dst, elastic, f_max);
-    elseif fn == "skewed_sigmoid_field"
+    if fn == "skewed_sigmoid_field"
         f = skewed_sigmoid_field(d_ideal, m_dst, elastic, f_max);
+    elseif fn == "sigmoid_field"
+        f = sigmoid_field(d_ideal, m_dst, elastic, f_max);
+    elseif fn == "no_push_sigmoid_field"
+        f = no_push_sigmoid_field(d_ideal, m_dst, elastic, f_max);
     elseif fn == "skewed_force_field"
         f = skewed_force_field(d_ideal, m_dst, elastic, f_max);
     elseif fn == "even_force_field"
@@ -11,7 +13,7 @@ function f = force_fields(fn, d_ideal, m_dst, elastic, f_max)
         test_fields(d_ideal, elastic, f_max);
     end
 end
-
+  
 function test_fields(d_ideal, elastic, f_max)
     hold on
     res = zeros(d_ideal * 2);
@@ -28,7 +30,7 @@ function test_fields(d_ideal, elastic, f_max)
     end
     plot(res);
     for m_dst = 1: 1: d_ideal * 2
-        res(m_dst) = skewed_sigmoid_field(d_ideal, m_dst, elastic, f_max);            
+        res(m_dst) = no_push_sigmoid_field(d_ideal, m_dst, elastic, f_max);            
     end
     %plot(res);
     hold off
@@ -52,6 +54,22 @@ function f = sigmoid_field(d_ideal, m_dst, elastic, f_max)
 end
 
 function f = skewed_sigmoid_field(d_ideal, m_dst, elastic, f_max)
+    buff = d_ideal * elastic;
+    d_max = d_ideal + buff;
+    d_min = buff;
+    con = 0.5;
+    if m_dst >= d_min && m_dst <= d_max
+        f = 0;
+    elseif m_dst < d_min
+        x = m_dst - d_min;
+        f = (x/(con + abs(x))) * f_max;
+    else
+        x = m_dst - d_max;
+        f = (x/ (con + abs(x))) * f_max;
+    end
+end
+
+function f = no_push_sigmoid_field(d_ideal, m_dst, elastic, f_max)
     % y = x / (con + abs(x))
     buff = d_ideal * elastic;
     d_max = d_ideal + buff;
