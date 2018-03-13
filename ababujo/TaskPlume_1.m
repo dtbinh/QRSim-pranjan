@@ -184,7 +184,7 @@ classdef TaskPlume_1<Task
             %d_ideal = d_ideal * obj.simState.dist_scale;
             %m_dst = m_dst * obj.simState.dist_scale;
             elastic = obj.simState.platforms{me}.elasticity;
-            force = force_fields("skewed_force_field", d_ideal, m_dst, elastic, f_max);%.even_force_field();
+            force = force_fields("skewed_sigmoid_field", d_ideal, m_dst, elastic, f_max);%.even_force_field();
             acc_mag = force / mass;
         end
         
@@ -266,12 +266,14 @@ classdef TaskPlume_1<Task
                         %end
                         vel_vec_initial = obj.simState.platforms{me}.getX(7:9);
                         vel_vec_target = vel_vec_initial + res_acc_vec * obj.simState.task.dt;
+                        obj.simState.platforms{me}.target_velocity = vel_vec_target;
                         UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(), vel_vec_target, 0);
                     else
                         % If UAV_i detected a plume then move towards UAV_i
                         % Else keep moving in the original direction.
                         % UU(:,k) = obj.PIDs{k}.computeU(obj.simState.platforms{k}.getX(),U(:,k),0);
-                        UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(),U(:,me),0);
+                        target_vel = obj.simState.platforms{me}.target_velocity;
+                        UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(), target_vel ,0);
                     end
                 end
             end

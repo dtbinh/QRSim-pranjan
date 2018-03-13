@@ -22,21 +22,17 @@ state = qrsim.init('TaskPlume_1');
 % create a 2 x cats matrix of control inputs
 % column i will contain the 2D NED velocity [vx;vy] in m/s
 N = state.task.N4 ;
-U = zeros(3,state.task.durationInSteps);
+U = zeros(3,N);
+
 tstart = tic;
 
-traj_colors = ["black", "red", "blue"];
+traj_colors = ["black", "red", "blue", "yellow", "green", "cyan", "magenta"];
 for i = 1:state.task.N4
     state.platforms{i}.setTrajectoryColor(traj_colors(mod(i, length(traj_colors))+1));
 end
 
 for i=1:state.task.durationInSteps
     tloop=tic;
-    for src=1:state.task.N4
-       if state.platforms{src}.isValid()     % Why this? because when a drone is dead it should not send it's coordinates.
-           U(:,src) = [2;0;0];   
-       end
-    end
     % Send UAVs coordinates. All the coordinates shall be available
     % before the next time quantum starts. We have kept it this way
     % because, in our benchmarks the message processing +
