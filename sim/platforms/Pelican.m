@@ -377,8 +377,6 @@ classdef Pelican<Steppable & Platform
                     reception_probability = 1;
                 end
                 if reception_probability < 0.5
-                    % Origin coordinate should be zeroed out.
-                    %obj.simState.platforms{dst}.uav_coord(:,msg.src) = [0,0,0];
                     success = 0;
                 else
                     success = 1;

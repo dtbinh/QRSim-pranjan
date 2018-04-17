@@ -18,7 +18,7 @@ state = qrsim.init('TaskPlume_1');
 % platforms in N1 -> no sensing features
 % platforms in N2 -> senses everything within 10f from it
 % platforms in N3 -> senses everything within 5f from it
-
+% Bayesian probabilities of the reason of message loss
 % create a 2 x cats matrix of control inputs
 % column i will contain the 2D NED velocity [vx;vy] in m/s
 N = state.task.N4 ;
@@ -53,7 +53,7 @@ for i=1:state.task.durationInSteps
         % wait so to run in real time
         % this can be commented out obviously
         wait = max(0,state.task.dt-toc(tloop));
-        pause(wait);
+        pause(wait/5);
     end
 end
 
