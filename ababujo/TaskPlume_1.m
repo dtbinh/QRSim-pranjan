@@ -184,6 +184,7 @@ classdef TaskPlume_1<Task
             %d_ideal = d_ideal * obj.simState.dist_scale;
             %m_dst = m_dst * obj.simState.dist_scale;
             elastic = obj.simState.platforms{me}.elasticity;
+            f_max = 20;
             force = force_fields("skewed_sigmoid_field", d_ideal, m_dst, elastic, f_max);%.even_force_field();
             acc_mag = force / mass;
         end
@@ -199,36 +200,36 @@ classdef TaskPlume_1<Task
             for me = 1: N
                 ob = obj.simState.platforms{me}.PlumeDetect(me);
                 % Check the message queue for any messages.
-                %obj.simState.platforms{me}.read_message(me);  % Not needed
+                obj.simState.platforms{me}.read_message(me);  
                 %with the current broadcast message implementation.
                 if(ob ==1 || obj.simState.platforms{me}.isValid() == 0) % If a UAV detects a plume, or it collided with another drone, it stops
                     UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(),[0;0;0],0);
                     %obj.simState.platforms{me}.setTrajectoryjLineWidth(10);
                     %obj.vt{i} = [obj.vt{i},[0 ;0 ;0]];  % Why this?
                 else
-                    ct = 0;
-                    res_coord = [0;0;0];
-                    p_acc_vec = [0;0;0];
+%                     ct = 0;
+%                     res_coord = [0;0;0];
+%                     p_acc_vec = [0;0;0];
                     c_acc_vec = [0;0;0];
-                    if obj.simState.send_plume_detected == 1 % If drones transmit plume detected message.
-                        for peer=1:N  % Check for all the plume detected messages
-                            peer_coord = obj.simState.platforms{me}.plume_coord(:,peer);
-                            if norm(peer_coord) ~= 0
-                                res_coord = res_coord + peer_coord;
-                                ct = ct + 1;
-                            end
-                        end
-                        if ct > 0
-                            res_coord = res_coord / ct;
-                        end
-                        if norm(res_coord) ~= 0
-                            my_coord = obj.simState.platforms{me}.getX(1:3);
-                            vec = res_coord - my_coord;
-                            unit_vec = vec/ norm(vec);
-                            p_acc_mag = obj.simState.platforms{me}.F_PLUME / obj.simState.platforms{me}.MASS;
-                            p_acc_vec = p_acc_mag * unit_vec;
-                        end
-                    end
+%                     if obj.simState.send_plume_detected == 1 % If drones transmit plume detected message.
+%                         for peer=1:N  % Check for all the plume detected messages
+%                             peer_coord = obj.simState.platforms{me}.plume_coord(:,peer);
+%                             if norm(peer_coord) ~= 0
+%                                 res_coord = res_coord + peer_coord;
+%                                 ct = ct + 1;
+%                             end
+%                         end
+%                         if ct > 0
+%                             res_coord = res_coord / ct;
+%                         end
+%                         if norm(res_coord) ~= 0
+%                             my_coord = obj.simState.platforms{me}.getX(1:3);
+%                             vec = res_coord - my_coord;
+%                             unit_vec = vec/ norm(vec);
+%                             p_acc_mag = obj.simState.platforms{me}.F_PLUME / obj.simState.platforms{me}.MASS;
+%                             p_acc_vec = p_acc_mag * unit_vec;
+%                         end
+%                     end
                     if obj.simState.send_coordinates == 1  % If drones transmit their coordinates
                         % Check if the current drone is outside of d_min and
                         % d_max range.
@@ -254,15 +255,15 @@ classdef TaskPlume_1<Task
                             c_acc_vec = c_acc_vec / c_ct;
                         end
                     end
-                    %res_acc_vec = [0;0;0];
-                    if  norm(p_acc_vec) ~= 0 && norm(c_acc_vec) ~= 0 
-                        res_acc_vec = (c_acc_vec + p_acc_vec)/2;
-                    else
-                        res_acc_vec = c_acc_vec + p_acc_vec;
-                    end
+                    res_acc_vec = c_acc_vec;
+%                     if  norm(p_acc_vec) ~= 0 && norm(c_acc_vec) ~= 0 
+%                         res_acc_vec = (c_acc_vec + p_acc_vec)/2;
+%                     else
+%                         res_acc_vec = c_acc_vec + p_acc_vec;
+%                     end
                     if norm(res_acc_vec) ~= 0
                         %if me == 1 || me == 3
-                            quiver3(my_coord(1),my_coord(2),my_coord(3), res_acc_vec(1), res_acc_vec(2), res_acc_vec(3));
+                            %quiver3(my_coord(1),my_coord(2),my_coord(3), res_acc_vec(1), res_acc_vec(2), res_acc_vec(3));
                         %end
                         vel_vec_initial = obj.simState.platforms{me}.getX(7:9);
                         vel_vec_target = vel_vec_initial + res_acc_vec * obj.simState.task.dt;
@@ -271,7 +272,7 @@ classdef TaskPlume_1<Task
                     else
                         % If UAV_i detected a plume then move towards UAV_i
                         % Else keep moving in the original direction.
-                        % UU(:,k) = obj.PIDs{k}.computeU(obj.simState.platforms{k}.getX(),U(:,k),0);
+                        %UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(),U(:,me),0);
                         target_vel = obj.simState.platforms{me}.target_velocity;
                         UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(), target_vel ,0);
                     end

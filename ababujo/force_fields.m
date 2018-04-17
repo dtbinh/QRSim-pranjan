@@ -1,3 +1,4 @@
+% Finite elemnet method. Google this
 function f = force_fields(fn, d_ideal, m_dst, elastic, f_max)
     if fn == "skewed_sigmoid_field"
         f = skewed_sigmoid_field(d_ideal, m_dst, elastic, f_max);
@@ -18,17 +19,22 @@ function test_fields(d_ideal, elastic, f_max)
     hold on
     res = zeros(d_ideal * 2);
     for m_dst = 1: 1: d_ideal * 2
-        res(m_dst) = sigmoid_field(d_ideal, m_dst, elastic, f_max);            
+        res(m_dst) = skewed_sigmoid_field(d_ideal, m_dst, elastic, f_max);            
     end
     %plot(res);
+    for m_dst = 1: 1: d_ideal * 2
+        res(m_dst) = sigmoid_field(d_ideal, m_dst, elastic, f_max);            
+    end
+    plot(res);
+
     for m_dst = 1: 1: d_ideal * 2
         res(m_dst) = even_force_field(d_ideal, m_dst, elastic, f_max);            
     end
-    %plot(res);
+    plot(res);
     for m_dst = 1: 1: d_ideal * 2
         res(m_dst) = skewed_force_field(d_ideal, m_dst, elastic, f_max);            
     end
-    plot(res);
+    %plot(res);
     for m_dst = 1: 1: d_ideal * 2
         res(m_dst) = no_push_sigmoid_field(d_ideal, m_dst, elastic, f_max);            
     end
