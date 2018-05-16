@@ -17,25 +17,30 @@ end
   
 function test_fields(d_ideal, elastic, f_max)
     hold on
-    res = zeros(d_ideal * 2);
-    for m_dst = 1: 1: d_ideal * 2
+    N = 10;
+    res = zeros(d_ideal * N);
+    for m_dst = 1: 1: d_ideal * N
         res(m_dst) = skewed_sigmoid_field(d_ideal, m_dst, elastic, f_max);            
     end
     %plot(res);
-    for m_dst = 1: 1: d_ideal * 2
+    for m_dst = 1: 1: d_ideal * N
         res(m_dst) = sigmoid_field(d_ideal, m_dst, elastic, f_max);            
     end
+    title("Force magnitude vs inter-UAV distance");
+    xlabel("distance x units");
+    ylabel("Force y units");
+    
     plot(res);
 
-    for m_dst = 1: 1: d_ideal * 2
+    for m_dst = 1: 1: d_ideal * N
         res(m_dst) = even_force_field(d_ideal, m_dst, elastic, f_max);            
     end
-    plot(res);
-    for m_dst = 1: 1: d_ideal * 2
+    %plot(res);
+    for m_dst = 1: 1: d_ideal * N
         res(m_dst) = skewed_force_field(d_ideal, m_dst, elastic, f_max);            
     end
     %plot(res);
-    for m_dst = 1: 1: d_ideal * 2
+    for m_dst = 1: 1: d_ideal * N
         res(m_dst) = no_push_sigmoid_field(d_ideal, m_dst, elastic, f_max);            
     end
     %plot(res);
@@ -44,18 +49,58 @@ end
 
 function f = sigmoid_field(d_ideal, m_dst, elastic, f_max)
     buff = d_ideal * elastic;
+    d_min = 4 * buff;
+    d_max = 6 * buff;
+    con = 0.5;
+    D1 = 10 * buff;
+    DX = 14 * buff;
+    if m_dst >= d_min && m_dst <= d_max
+        f = 0;
+    elseif m_dst < d_min
+        x = m_dst - d_min;  % x will be negative
+        f = (x / (con + abs(x))) * f_max;
+    elseif m_dst <= D1
+        x = m_dst - d_max;
+        f = (x / (con + abs(x))) * f_max;
+    else
+        if m_dst > DX
+            f = 0;
+        else
+            x = DX - m_dst;
+            f = (x/ (con + abs(x))) * f_max;
+        end
+    end
+    text(d_min, -1, "D_m_i_n");
+    text(d_max, 1, "D_m_a_x");
+    text(D1, 1, "D1");
+    text(DX, 1, "DX");
+
+end
+
+function f = oldsigmoid_field(d_ideal, m_dst, elastic, f_max)
+    buff = d_ideal * elastic;
     d_max = d_ideal + buff;
     d_min = d_ideal - buff;
     con = 0.5;
+    xx = d_ideal + 5 * buff;
     if m_dst >= d_min && m_dst <= d_max
         f = 0;
     elseif m_dst < d_min
         x = m_dst - d_min; % x will be negative
         f = (x / (con + abs(x))) * f_max;
-    else
+    elseif m_dst <= xx
         x = m_dst - d_max;
         f = (x/ (con + abs(x))) * f_max;
+    else
+        if m_dst > xx + 4 * buff
+            f = 0;
+        else
+              x = 4*buff - (m_dst - xx);
+              f = (x / (con + abs(x))) * f_max; 
+        end            
     end
+    text(d_min, -1, "D_m_i_n");
+    text(d_max, 1, "D_m_a_x");
     
 end
 
