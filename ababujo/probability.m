@@ -1,10 +1,10 @@
 function x = probability()
     T = 17;
-    Dth = -87;        % Dbm, Threshold for a successful message receipt.
-    N = 60;
-    F = 2400;
-    mmean = 0;
-    sigma = 5;
+    Dth = -87;        % dBm, Threshold for a successful message receipt.
+    N = 1000;
+    F = 2400;  % MHz
+    mmean = -10;
+    sigma = 2;
     recv = zeros(1,N);
     for i=1:N
         recv(i) = helper(T, i, F, mmean, sigma);
@@ -15,11 +15,13 @@ function x = probability()
     for i=1:N
         recv(i) = helper(T, i, F, mmean, 0);
     end
+    text(500, -40, ['T= ', num2str(T) , ' dBm, F= ',  num2str(F),  ' MHz,  sigma= ',  num2str(sigma)]);
     plot(recv)
     hold off;
     xlabel("Distance in meters");
     ylabel("Received signal strength (dBm)");
-    title([' T= ', num2str(T), ' dBm, F= ', num2str(F), ' m, mean= ', num2str(mmean), ', sigma= ', num2str(sigma)]);
+    %title([' T= ', num2str(T), ' dBm, F= ', num2str(F), ' m, mean= ', num2str(mmean), ', sigma= ', num2str(sigma)]);
+    
     subplot(2,1,2)
     %dsts = [10, sqrt(2) * 10, 20, sqrt(2) * 20, 30, 30 * sqrt(2)];
     dsts = 1:N;
