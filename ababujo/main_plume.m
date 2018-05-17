@@ -27,7 +27,7 @@ U = zeros(3,N);
 tstart = tic;
 
 traj_colors = ["black", "red", "blue", "yellow", "green", "cyan", "magenta"];
-for i = 1:state.task.N4
+for i = 1:N
     state.platforms{i}.setTrajectoryColor(traj_colors(mod(i, length(traj_colors))+1));
 end
 
@@ -44,8 +44,8 @@ for i=1:state.task.durationInSteps
     % step simulator
     qrsim.step(U);
     % TODO: zero out all the coordinates.
-    for d1=1:state.task.N4
-        for d2= 1:state.task.N4
+    for d1=1:N
+        for d2= 1:N
             state.platforms{d1}.uav_coord(:,d2) = [0,0,0];
         end
     end
@@ -53,7 +53,7 @@ for i=1:state.task.durationInSteps
         % wait so to run in real time
         % this can be commented out obviously
         wait = max(0,state.task.dt-toc(tloop));
-        pause(wait/5);
+        pause(wait);
     end
 end
 

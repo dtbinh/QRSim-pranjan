@@ -13,7 +13,9 @@ classdef TaskPlume_1<Task
         N1 = 0;             % drones without any obstacle sensing capability
         N2 = 0;             % drones with the ability to sense anything in the radius of 10f
         N3 = 0;             % drones with the ability to sense anything in the radius of 5f
-        N4 = 9;             % drones when sensing another drone carries straight on assuming the other drones would change its route
+        N4 = 36;             % drones when sensing another drone carries straight on assuming the other drones would change its route
+                       % pranjan Keep N4 as a square number, this way the initial drones
+                       % can be positioned in a nice square grid.
         N5 = 0;             % drones when sensing another drone tries to fly above it.
         hfix = 15;           % fix flight altitude
         PENALTY = 1000;      % penalty reward in case of collision
@@ -80,7 +82,7 @@ classdef TaskPlume_1<Task
             %ababujo:obstacles{Column - X Y Z(h) r}
             % taskparams.environment.area.obstacles = taskparams.environment.area.type.obstacles;
             taskparams.environment.area.obstacles = [ ];
-            taskparams.environment.area.plume = [10 40 25 9]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.
+            taskparams.environment.area.plume = [10 10 25 19]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.
             %taskparams.environment.area.plume = [10 40 25 13]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.            
             
             % GPS
@@ -118,7 +120,7 @@ classdef TaskPlume_1<Task
             %%%%% platforms %%%%%
             % Configuration and initial state for each of the platforms
             
-            for i=1:obj.N4,
+            for i=1:obj.N4
                 taskparams.platforms(i).configfile = 'Detect10_config';
             end
             
@@ -130,42 +132,30 @@ classdef TaskPlume_1<Task
         %ababujo: reset() is called initially to iniitialize the positions
         % and in this case the PIDs
         function reset(obj)
-            j=0;
-            for i=1:floor(obj.N4/3)  % i = 1,2,3
-                obj.simState.platforms{i}.setX([-10;50;-obj.hfix-10*j;0;0;0]);
-                obj.PIDs{i} = VelocityPID(obj.simState.DT);
-                obj.f{i} = 0;
-                obj.d{i} = 0;
-                obj.p{i} = 0;
-                obj.in{i} = 0;
-                obj.vt{i} = zeros(3,obj.durationInSteps);
-                j=j+1;
+            N = obj.N4;
+            X = sqrt(N);
+%             % For 9 drones, the below will be reasonable
+%             Y_seperation = 6;  Z_seperation = 6; Z_base = -20; 
+%             Y_base = 20;    % Y coordinate of Drone #1 X_base = -10;   
+            % For 36 drones, the below will be reasonable
+            Y_seperation = 10;  Z_seperation = 10; Z_base = 5; 
+            Y_base = 44;    % Y coordinate of Drone #1 
+            X_base = -10;   
+
+            for i = 1:X
+                for j = 1:X
+                    idx = ((i-1) * X + (j-1)) + 1;
+                    obj.simState.platforms{idx}.setX([X_base; Y_base - i * Y_seperation; Z_base - j * Z_seperation; 0; 0; 0]);
+                    obj.PIDs{idx} = VelocityPID(obj.simState.DT);
+                    obj.f{idx} = 0;
+                    obj.d{idx} = 0;
+                    obj.p{idx} = 0;
+                    obj.in{idx} = 0;
+                end
             end
-            j=0;
-            for i=floor(obj.N4/3)+1:floor(2*obj.N4/3)  % i = 4,5,6
-                obj.simState.platforms{i}.setX([-10;40;-obj.hfix-10*j;0;0;0]);
-                obj.PIDs{i} = VelocityPID(obj.simState.DT);
-                obj.f{i} = 0;
-                obj.d{i} = 0;
-                obj.p{i} = 0;
-                obj.in{i} = 0;
-                obj.vt{i} = zeros(3,obj.durationInSteps);
-                j=j+1;
-            end
-            j=0;
-            for i=floor(2*obj.N4/3)+1:floor(obj.N4)  % i = 7,8,9
-                obj.simState.platforms{i}.setX([-10;30;-obj.hfix-10*j;0;0;0]);
-                obj.PIDs{i} = VelocityPID(obj.simState.DT);
-                obj.f{i} = 0;
-                obj.d{i} = 0;
-                obj.p{i} = 0;
-                obj.in{i} = 0;
-                obj.vt{i} = zeros(3,obj.durationInSteps);
-                j=j+1;
-            end
-            for i=1:obj.N4
+            for i=1:N
                 my_coord = obj.simState.platforms{i}.getX(1:3);
-                for j=1:obj.N4
+                for j=1:N
                     peer_coord = obj.simState.platforms{j}.getX(1:3);   
                     m_dst = pdist([my_coord';peer_coord'], 'euclidean');  % Should be 0 when i==j
                     obj.simState.platforms{i}.distances = [obj.simState.platforms{i}.distances, m_dst];
@@ -178,13 +168,11 @@ classdef TaskPlume_1<Task
         function acc_mag = get_acceleration_mag(obj, m_dst, me, peer)
             mass = obj.simState.platforms{me}.MASS;
             f_max = obj.simState.platforms{me}.F_MAX;
-            
             d_ideal = obj.simState.platforms{me}.distances(:,peer);  % Scale d_ideal.
             % scale m_dst and d_ideal
             %d_ideal = d_ideal * obj.simState.dist_scale;
             %m_dst = m_dst * obj.simState.dist_scale;
             elastic = obj.simState.platforms{me}.elasticity;
-            f_max = 20;
             force = force_fields("skewed_sigmoid_field", d_ideal, m_dst, elastic, f_max);%.even_force_field();
             acc_mag = force / mass;
         end
@@ -204,38 +192,13 @@ classdef TaskPlume_1<Task
                 %with the current broadcast message implementation.
                 if(ob ==1 || obj.simState.platforms{me}.isValid() == 0) % If a UAV detects a plume, or it collided with another drone, it stops
                     UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(),[0;0;0],0);
-                    %obj.simState.platforms{me}.setTrajectoryjLineWidth(10);
-                    %obj.vt{i} = [obj.vt{i},[0 ;0 ;0]];  % Why this?
                 else
-%                     ct = 0;
-%                     res_coord = [0;0;0];
-%                     p_acc_vec = [0;0;0];
                     c_acc_vec = [0;0;0];
-%                     if obj.simState.send_plume_detected == 1 % If drones transmit plume detected message.
-%                         for peer=1:N  % Check for all the plume detected messages
-%                             peer_coord = obj.simState.platforms{me}.plume_coord(:,peer);
-%                             if norm(peer_coord) ~= 0
-%                                 res_coord = res_coord + peer_coord;
-%                                 ct = ct + 1;
-%                             end
-%                         end
-%                         if ct > 0
-%                             res_coord = res_coord / ct;
-%                         end
-%                         if norm(res_coord) ~= 0
-%                             my_coord = obj.simState.platforms{me}.getX(1:3);
-%                             vec = res_coord - my_coord;
-%                             unit_vec = vec/ norm(vec);
-%                             p_acc_mag = obj.simState.platforms{me}.F_PLUME / obj.simState.platforms{me}.MASS;
-%                             p_acc_vec = p_acc_mag * unit_vec;
-%                         end
-%                     end
                     if obj.simState.send_coordinates == 1  % If drones transmit their coordinates
                         % Check if the current drone is outside of d_min and
                         % d_max range.
                         my_coord = obj.simState.platforms{me}.getX(1:3);
                         c_ct = 0;
-                        %c_acc_vec = [0;0;0];
                         for peer=1:N
                             if me ~= peer && obj.simState.platforms{peer}.isValid() == 1
                                 peer_coord = obj.simState.platforms{me}.uav_coord(:,peer);
@@ -256,11 +219,6 @@ classdef TaskPlume_1<Task
                         end
                     end
                     res_acc_vec = c_acc_vec;
-%                     if  norm(p_acc_vec) ~= 0 && norm(c_acc_vec) ~= 0 
-%                         res_acc_vec = (c_acc_vec + p_acc_vec)/2;
-%                     else
-%                         res_acc_vec = c_acc_vec + p_acc_vec;
-%                     end
                     if norm(res_acc_vec) ~= 0
                         %if me == 1 || me == 3
                             %quiver3(my_coord(1),my_coord(2),my_coord(3), res_acc_vec(1), res_acc_vec(2), res_acc_vec(3));
