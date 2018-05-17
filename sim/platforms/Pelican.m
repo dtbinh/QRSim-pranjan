@@ -48,7 +48,7 @@ classdef Pelican<Steppable & Platform
         % pelicanODE function
         G = 9.81;    %  gravity m/s^2
         MASS = 1.68; %  mass of the platform Kg
-        F_MAX = 15;   %  pranjan. Unit: Newton. The magnitude of the maximum force (Push or pull) that a drone shall experience when it goes out of range. i.e. <d_min or >d_max
+        F_MAX = 8;   %  pranjan. Unit: Newton. The magnitude of the maximum force (Push or pull) that a drone shall experience when it goes out of range. i.e. <d_min or >d_max
         F_PLUME = 5; % pranjan. Newton. The force experienced when a drone gets a plume detected message.
         labels = {'px','py','pz','phi','theta','psi','u','v','w','p','q','r','thrust'};
     end
@@ -57,7 +57,7 @@ classdef Pelican<Steppable & Platform
         % Source: http://www.ti.com/lit/ds/symlink/wl1805mod.pdf section 5.7
         % 18 Mbps OFDM, TYP transmitter power,  
         transmitter_strength = 17;  % pranjan in Dbm. WL18xxMOD WiLink™ Wi-Fi®  Used in Beaglebone black
-        receiver_threshold = -75; % pranjan in Dbm. same source. section 5.6.
+        receiver_threshold = -87; % pranjan in Dbm. same source. section 5.6.
         transmission_frequency = 2400; % MHz
         d_min = 1;     % if distance between A and B is less than d_min, both experience a PUSH force.
         d_max = 35;     % If diatance between A and B is larger than d_max, both experience a PULL force.
@@ -342,8 +342,8 @@ classdef Pelican<Steppable & Platform
         end
         
         function p = get_message_reception_probability(obj, T, D, F, Dth)
-            sigma = 10;     % Standard deviation for the gaussian random variable N
-            mmean = 0;       % Mean for the gaussian radom variable N
+            sigma = 2;     % Standard deviation for the gaussian random variable N
+            mmean = -10;       % Mean for the gaussian radom variable N
             RecPower = obj.get_rec_power(T, D, F, mmean, sigma);
             if RecPower  > Dth
                 p = 1;
@@ -363,7 +363,8 @@ classdef Pelican<Steppable & Platform
         end
         
         function success = send_message(obj, msg, transmitter, dst)
-            if transmitter ~= dst
+            if transmitter ~= dst && msg.TTL > 0
+                msg.TTL = msg.TTL - 1;
                 dest_coord = obj.simState.platforms{dst}.getX(1:3);
                 transmitter_coord = obj.simState.platforms{transmitter}.getX(1:3);
                 D = pdist([transmitter_coord'; dest_coord'], 'euclidean'); % Eucledian Distance
@@ -397,7 +398,6 @@ classdef Pelican<Steppable & Platform
         end
         
         function out = read_message(obj, uav_no)
-            % Outdated. 
             % % Method: Reads all the messages from the in-queue.
             
             % Iterate over each message in the queue.
@@ -535,9 +535,10 @@ classdef Pelican<Steppable & Platform
         function coll = inCollision(obj)
             % returns 1 if a collision is occourring
             coll = 0;
-            for i=1:length(obj.simState.platforms),
+            return
+            for i=1:length(obj.simState.platforms)
                 
-                for j=1:length(obj.simState.platforms),
+                for j=1:length(obj.simState.platforms)
                     if(obj.simState.platforms{i} ~= obj.simState.platforms{j})
                         if(norm(obj.simState.platforms{i}.X(1:3)-obj.simState.platforms{j}.X(1:3))< obj.simState.platforms{j}.getCollisionDistance())
                             coll = 1;
