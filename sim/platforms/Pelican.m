@@ -66,6 +66,8 @@ classdef Pelican<Steppable & Platform
         % depend on the transmitter strength.
         in_msg_queue;   % pranjan.
         out_msg_queue;  % pranjan.
+        messages;       % pranjan. The messages which are in the queue.
+        tr_msgs;         % pranjan. The messages that have been transmitted by this node.
         uav_coord;      % pranjan. A platform shall store the coordinates of other UAVs. This info shall be collected through messages.
         plume_coord;    % pranjan. A platform shall store the coordinates where plumes have been detected.
         peer_contact_time; % pranjan. The last time this peer had contacted.
@@ -131,6 +133,8 @@ classdef Pelican<Steppable & Platform
             obj.dynNoise = objparams.dynNoise;
             obj.in_msg_queue = [];  % pranjan. Initialize a message queue on each platform.
             obj.out_msg_queue = [];
+            obj.messages = containers.Map();
+            obj.tr_msgs = containers.Map();
             %obj.transmitter_strength = 20;  % pranjan TODO: Initialize it through objparams.
             obj.uav_coord = zeros(3, obj.simState.task.N4);
             obj.plume_coord = zeros(3, obj.simState.task.N4);
@@ -362,15 +366,43 @@ classdef Pelican<Steppable & Platform
             RecPower = T - FSPL + N;
         end
         
-        function success = send_message(obj, msg, transmitter, dst)
-            if transmitter ~= dst && msg.TTL > 0
-                msg.TTL = msg.TTL - 1;
-                dest_coord = obj.simState.platforms{dst}.getX(1:3);
+        function success = send_one_hop_message(obj, msg, transmitter, dest)
+            if dest ~= transmitter && dest ~= msg.src && isKey(obj.simState.platforms{dest}.messages, msg.id) == 0 && isKey(obj.simState.platforms{dest}.tr_msgs, msg.id) == 0
+                    % the message has not been already heard or transmitted
+                    % by the destination.
+                dest_coord = obj.simState.platforms{dest}.getX(1:3);
                 transmitter_coord = obj.simState.platforms{transmitter}.getX(1:3);
                 D = pdist([transmitter_coord'; dest_coord'], 'euclidean'); % Eucledian Distance
                 D = D * obj.simState.dist_scale; % Scale D      
                 T = obj.simState.platforms{transmitter}.transmitter_strength; % Souce Transmission strength.
-                Dth = obj.simState.platforms{dst}.receiver_threshold;
+                Dth = obj.simState.platforms{dest}.receiver_threshold;
+                F = obj.simState.platforms{transmitter}.transmission_frequency; % Transmission Frequency
+                if obj.simState.message_loss == 1
+                    reception_probability = obj.get_message_reception_probability(T, D, F, Dth);
+                else
+                    reception_probability = 1;
+                end
+                if reception_probability < 0.5
+                    success = 0;
+                else
+                    success = 1;
+                    T_ub = 0.002;  % Upper bound of Backoff Time
+                    boff_time =  datetime('now') + seconds(rand() * T_ub);
+                    msg.boff_time = boff_time;
+                    obj.simState.platforms{dest}.messages(msg.id) = msg;
+                end
+            end
+        end
+        
+        function success = send_message(obj, msg, transmitter, dest)
+            if transmitter ~= dest && msg.TTL > 0
+                msg.TTL = msg.TTL - 1;
+                dest_coord = obj.simState.platforms{dest}.getX(1:3);
+                transmitter_coord = obj.simState.platforms{transmitter}.getX(1:3);
+                D = pdist([transmitter_coord'; dest_coord'], 'euclidean'); % Eucledian Distance
+                D = D * obj.simState.dist_scale; % Scale D      
+                T = obj.simState.platforms{transmitter}.transmitter_strength; % Souce Transmission strength.
+                Dth = obj.simState.platforms{dest}.receiver_threshold;
                 F = obj.simState.platforms{transmitter}.transmission_frequency; % Transmission Frequency
                 if obj.simState.message_loss == 1
                     reception_probability = obj.get_message_reception_probability(T, D, F, Dth);
@@ -382,7 +414,7 @@ classdef Pelican<Steppable & Platform
                 else
                     success = 1;
                     % Deliver the message in the in_msg_queue of destination.
-                    obj.simState.platforms{dst}.in_msg_queue = [obj.simState.platforms{dst}.in_msg_queue, msg];
+                    obj.simState.platforms{dest}.in_msg_queue = [obj.simState.platforms{dest}.in_msg_queue, msg];
                 end
             end
         end

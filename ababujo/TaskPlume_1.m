@@ -36,6 +36,7 @@ classdef TaskPlume_1<Task
         done = 0;
         time =0;
         vt; % to store target velocities
+        furthest_pairs;     % pranjan:
     end
     
     methods (Sealed,Access=public)
@@ -131,7 +132,41 @@ classdef TaskPlume_1<Task
         
         %ababujo: reset() is called initially to iniitialize the positions
         % and in this case the PIDs
-        function reset(obj)
+        function random_formation(obj)
+            N = obj.N4;
+            x_min = -40;
+            x_max = 40;
+            y_min = -40;
+            y_max = 40;
+            z_min = 5;
+            z_max = 50;
+            for drone=1:N
+                x = x_min + rand() * (x_max - x_min);
+                y = y_min + rand() * (y_max - y_min);
+                z = z_min + rand() * (z_max - z_min);
+                %fprintf("\n%f %f %f\n", x, y, -z);               
+                obj.simState.platforms{drone}.setX([x; y; -z; 0;0;0;]);
+                obj.PIDs{drone} = VelocityPID(obj.simState.DT);
+            end
+        end
+        
+        function fixed_speherical(obj)
+            N = obj.N4;
+            theta = 2 * pi * rand(1,N);  % Generate 36 values between 0 to 360 degrees.
+            phi = asin(-1+2*rand(1,N));
+            center = obj.simState.environment.area.plume(1:3);
+            radius = obj.simState.environment.area.plume(4);
+            [X,Y,Z] = sph2cart(theta,phi,radius);
+            X = X + center(1);
+            Y = Y + center(2);
+            Z = Z + center(3);
+            for idx = 1:N
+                obj.simState.platforms{idx}.setX([X(idx); Y(idx); -Z(idx); 0; 0; 0]);
+                obj.PIDs{idx} = VelocityPID(obj.simState.DT);
+            end
+        end
+        
+        function mesh_formation(obj)
             N = obj.N4;
             X = sqrt(N);
 %             % For 9 drones, the below will be reasonable
@@ -147,21 +182,43 @@ classdef TaskPlume_1<Task
                     idx = ((i-1) * X + (j-1)) + 1;
                     obj.simState.platforms{idx}.setX([X_base; Y_base - i * Y_seperation; Z_base - j * Z_seperation; 0; 0; 0]);
                     obj.PIDs{idx} = VelocityPID(obj.simState.DT);
-                    obj.f{idx} = 0;
-                    obj.d{idx} = 0;
-                    obj.p{idx} = 0;
-                    obj.in{idx} = 0;
+%                     obj.f{idx} = 0;
+%                     obj.d{idx} = 0;
+%                     obj.p{idx} = 0;
+%                     obj.in{idx} = 0;
                 end
             end
+        end
+        
+        
+        function reset(obj)
+            formation_type = "spherical"; 
+            switch formation_type
+                case "random"
+                    obj.random_formation();
+                case "spherical"
+                    obj.fixed_speherical();
+                otherwise
+                    obj.mesh_formation();
+            end
+            N = obj.N4;
+            src_dst_pairs = zeros(N * N, 3);
             for i=1:N
                 my_coord = obj.simState.platforms{i}.getX(1:3);
                 for j=1:N
                     peer_coord = obj.simState.platforms{j}.getX(1:3);   
                     m_dst = pdist([my_coord';peer_coord'], 'euclidean');  % Should be 0 when i==j
                     obj.simState.platforms{i}.distances = [obj.simState.platforms{i}.distances, m_dst];
-                    fprintf("Me = %d peer = %d, ideal dist = %f\n", i, j, m_dst);
+                    %fprintf("Me = %d peer = %d, ideal dist = %f\n", i, j, m_dst);
+                    idx = (i-1) * N + j;
+                    src_dst_pairs(idx, :) = [i, j, m_dst];
                 end
             end
+            [~, idx] = unique(src_dst_pairs(:, 3));
+            src_dst_pairs = src_dst_pairs(idx, :);
+            src_dst_pairs = sortrows(src_dst_pairs, 3, 'descend');  
+            number_of_pairs = 2;
+            obj.furthest_pairs = src_dst_pairs(1:number_of_pairs, :);
         end
   
 
