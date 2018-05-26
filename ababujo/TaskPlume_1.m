@@ -150,6 +150,7 @@ classdef TaskPlume_1<Task
             end
         end
         
+        
         function fixed_speherical(obj)
             N = obj.N4;
             theta = 2 * pi * rand(1,N);  % Generate 36 values between 0 to 360 degrees.
@@ -192,7 +193,7 @@ classdef TaskPlume_1<Task
         
         
         function reset(obj)
-            formation_type = "spherical"; 
+            formation_type = "mesh"; 
             switch formation_type
                 case "random"
                     obj.random_formation();
@@ -217,7 +218,7 @@ classdef TaskPlume_1<Task
             [~, idx] = unique(src_dst_pairs(:, 3));
             src_dst_pairs = src_dst_pairs(idx, :);
             src_dst_pairs = sortrows(src_dst_pairs, 3, 'descend');  
-            number_of_pairs = 2;
+            number_of_pairs = 3;
             obj.furthest_pairs = src_dst_pairs(1:number_of_pairs, :);
         end
   
