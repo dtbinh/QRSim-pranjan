@@ -222,26 +222,26 @@ classdef QRSim<handle
     
     methods (Access=public)
         
-        function [scat_ct, tr_ct, success, hop_count, end_to_end_delay] = petal_send_message(obj, msg, transmitter)
+        function [scat_ct, tr_ct, success, hop_count, end_to_end_delay] = petal_send_message(obj, msg, transmitter, mark_points)
             % Returns: scat_ct : number of nodes involved by this message
             %                    transmission. (Either transmitted or received)
             %  tr_ct: Number of retransmissions of this message.
             %  success: Whether this message was successfully delivered.
             % hop_count: If successful delivery, then the number of nodes
             % this message visited.
-            mark_points = 0;
             if obj.simState.platforms{transmitter}.isValid() == false
                 fprintf("\n Drone %d state not valid", transmitter);
                 return
             end
             UTC = datetime(1970,1,1,0,0,0);
+            T_ub = 0.002; % seconds Upper bound on the back off time.
             success = 0;
             tr_ct = 0;
             scat_ct = 0;
             hop_count = 0;
-            end_to_end_delay = Inf();
+            end_to_end_delay = datetime('now') - UTC;
             for dest= 1: obj.simState.task.N4
-                obj.simState.platforms{transmitter}.send_one_hop_message(msg, transmitter, dest);
+                obj.simState.platforms{transmitter}.send_one_hop_message(msg, transmitter, dest, T_ub);
             end
             
             done = 0;
@@ -259,7 +259,7 @@ classdef QRSim<handle
                             end_to_end_delay = datetime('now') - r_msg.timestamp;
                             return
                         end
-                        % if this drone is in the prolate spheroid     
+                        % if this drone is in the prolate spheroid
                         my_coord = obj.simState.platforms{drone}.getX(1:3);
                         x1 = pdist([r_msg.sloc'; my_coord'], 'euclidean');
                         x2 = pdist([r_msg.dloc'; my_coord'], 'euclidean');
@@ -270,7 +270,7 @@ classdef QRSim<handle
                             if ~isbetween(t, UTC, r_msg.boff_time)
                                 r_msg.hop_count = r_msg.hop_count + 1;
                                 for dest= 1:obj.simState.task.N4
-                                    obj.simState.platforms{drone}.send_one_hop_message(r_msg, drone, dest);
+                                    obj.simState.platforms{drone}.send_one_hop_message(r_msg, drone, dest, T_ub);
                                 end
                                 %fprintf("\n Message %s repeated by %d ", msg.id, drone);
                                 tr_ct = tr_ct + 1;
@@ -283,7 +283,7 @@ classdef QRSim<handle
                             end
                         else
                             %fprintf("\n Drone %d is out of petal for Message %s", drone, msg.id);
-                            if mark_points == 1;  scatter3(my_coord(1), my_coord(2), my_coord(3)-2, 60, 'black', 'filled'); end
+                            if mark_points == 1;  scatter3(my_coord(1), my_coord(2), my_coord(3)-1, 60, 'black', 'filled'); end
                             remove(obj.simState.platforms{drone}.messages, r_msg.id);
                             obj.simState.platforms{drone}.tr_msgs(r_msg.id) = 1;
                             scat_ct = scat_ct + 1;
@@ -292,26 +292,85 @@ classdef QRSim<handle
                 end
             end
         end
-
-        function ct = app_unicast(obj, src, dest, petal_width, data)
-            msg = geo_message(obj.simState, src, dest, petal_width, data);
-            ct = obj.petal_send_message(msg, src); 
+        
+        function scat_ct = app_unicast_petal_routing(obj, src, dest, petal_width, data, mark_points)
+            msg = geo_message(obj.simState, src, dest, petal_width, data, mark_points);
+            [scat_ct, tr_ct, success, hop_count, end_to_end_delay]  = obj.petal_send_message(msg, src, mark_points);
+            fprintf("[scat_ct= %d, tr_ct= %d, success= %d, hop_count= %f, end_to_end_delay= %f]", scat_ct, tr_ct, success, hop_count, seconds(end_to_end_delay));
         end
-                
+        
+        
+        function [scat_ct, tr_ct, success, hop_count, end_to_end_delay] = flood_packet(obj, msg, transmitter, mark_points)
+            if obj.simState.platforms{transmitter}.isValid() == false
+                fprintf("\n Drone %d state not valid", transmitter);
+                return
+            end
+            T_ub = 0;
+            scat_ct = 0;
+            tr_ct = 0;     % Transmission count
+            success = 0;   % Message successfully delivered?
+            hop_count = 0; % Number of hops made to reach destination.
+            UTC = datetime(1970,1,1,0,0,0);
+            end_to_end_delay = datetime('now') - UTC;
+
+            for dest=1:obj.simState.task.N4
+                obj.simState.platforms{transmitter}.send_one_hop_message(msg, transmitter, dest, T_ub);
+            end
+            
+            done = 0;
+            while done == 0
+                done = 1;
+                for drone= 1: obj.simState.task.N4
+                    if isKey(obj.simState.platforms{drone}.messages, msg.id)
+                        r_msg = obj.simState.platforms{drone}.messages(msg.id);
+                        if drone == msg.dest
+                            success = 1;
+                            hop_count = r_msg.hop_count;
+                            end_to_end_delay = datetime('now') - r_msg.timestamp;
+                        
+                        elseif r_msg.HTL > 0 
+                            done = done && 0;
+                            r_msg.hop_count = r_msg.hop_count + 1;
+                            r_msg.HTL = r_msg.HTL - 1;
+                            for dest= 1: obj.simState.task.N4
+                                obj.simState.platforms{drone}.send_one_hop_message(r_msg, drone, dest, T_ub);
+                            end
+                            if mark_points == 1
+                                my_coord = obj.simState.platforms{drone}.getX(1:3);
+                                scatter3(my_coord(1), my_coord(2), my_coord(3), 60, 'red', 'filled'); 
+                            end
+
+                            tr_ct = tr_ct + 1;
+                            scat_ct = scat_ct + 1;
+                            remove(obj.simState.platforms{drone}.messages, r_msg.id);
+                            obj.simState.platforms{drone}.tr_msgs(r_msg.id) = 1;
+                        end
+                    end
+                end
+            end
+        end
+        
+        function scat_ct = app_unicast_flooding(obj, src, dest, HTL, data, type, mark_points)
+            msg = uav_message(obj.simState, src, dest, HTL, data, type, mark_points);
+            [scat_ct, tr_ct, success, hop_count, end_to_end_delay] = obj.flood_packet(msg, src, mark_points);
+            fprintf("[scat_ct= %d, tr_ct= %d, success= %d, hop_count= %f, end_to_end_delay= %f]", scat_ct, tr_ct, success, hop_count, seconds(end_to_end_delay));
+        end
+        
         function broadcast_coordinates(obj)
             % In this loop all drones generate a new message and broadcast
             % them.
             for origin=1:obj.simState.task.N4
                 if obj.simState.platforms{origin}.isValid()     % Why this? because when a drone is dead it should not send it's coordinates.
-                    msg = uav_message(origin, obj.simState, "Coordinates", 2);
+                    dest = 0; % 0 means broadcast.
+                    HTL = 1;  % Hops to live.
+                    msg = uav_message(obj.simState, origin, dest, HTL, "Coordinates", 2, 0);
                     for dst=1:obj.simState.task.N4
                         obj.simState.platforms{origin}.send_message(msg, origin, dst);
                     end
                 end
             end
-            if obj.simState.forward_messages == 0
-                return
-            end
+            UTC = datetime(1970,1,1,0,0,0);
+
             % In this loop all the messages in the network are being
             % forwarded untill the broadcast dies out.
             done = 0;
@@ -329,7 +388,7 @@ classdef QRSim<handle
                                 continue
                             end
                             last_contact_ts = obj.simState.platforms{drone}.peer_contact_time(msg.src);
-                            if last_contact_ts < msg.timestamp
+                            if ~isbetween(msg.timestamp, UTC, last_contact_ts)
                                 obj.simState.platforms{drone}.peer_contact_time(msg.src) = msg.timestamp;
                                 obj.simState.platforms{drone}.uav_coord(:,msg.src) = msg.origin_coord;
                                 for dst = 1:obj.simState.task.N4
@@ -338,12 +397,12 @@ classdef QRSim<handle
                             end
                         end
                         % All the messages in the current drone's in_msg_queue have been read. Hence empty out the in_queue
-                        obj.simState.platforms{drone}.in_msg_queue = [];  
+                        obj.simState.platforms{drone}.in_msg_queue = [];
                     end
                 end
             end
         end
-
+        
         
         function delete(obj)
             % destructor, cleans the path

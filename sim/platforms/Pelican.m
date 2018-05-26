@@ -138,7 +138,11 @@ classdef Pelican<Steppable & Platform
             %obj.transmitter_strength = 20;  % pranjan TODO: Initialize it through objparams.
             obj.uav_coord = zeros(3, obj.simState.task.N4);
             obj.plume_coord = zeros(3, obj.simState.task.N4);
-            obj.peer_contact_time(1: obj.simState.task.N4) = posixtime(datetime('now'));
+            obj.peer_contact_time = datetime(zeros(1,obj.simState.task.N4), 0, 0);
+            for idx = 1: obj.simState.task.N4
+                obj.peer_contact_time(idx) = datetime('now');
+            end
+            
             if(isfield(objparams,'behaviourIfStateNotValid'))
                 obj.behaviourIfStateNotValid = objparams.behaviourIfStateNotValid;
             end
@@ -366,7 +370,7 @@ classdef Pelican<Steppable & Platform
             RecPower = T - FSPL + N;
         end
         
-        function success = send_one_hop_message(obj, msg, transmitter, dest)
+        function success = send_one_hop_message(obj, msg, transmitter, dest, T_ub)
             if dest ~= transmitter && dest ~= msg.src && isKey(obj.simState.platforms{dest}.messages, msg.id) == 0 && isKey(obj.simState.platforms{dest}.tr_msgs, msg.id) == 0
                     % the message has not been already heard or transmitted
                     % by the destination.
@@ -386,8 +390,7 @@ classdef Pelican<Steppable & Platform
                     success = 0;
                 else
                     success = 1;
-                    T_ub = 0.002;  % Upper bound of Backoff Time
-                    boff_time =  datetime('now') + seconds(rand() * T_ub);
+                    boff_time =  datetime('now') +  T_ub * seconds(rand());
                     msg.boff_time = boff_time;
                     obj.simState.platforms{dest}.messages(msg.id) = msg;
                 end
@@ -395,8 +398,8 @@ classdef Pelican<Steppable & Platform
         end
         
         function success = send_message(obj, msg, transmitter, dest)
-            if transmitter ~= dest && msg.TTL > 0
-                msg.TTL = msg.TTL - 1;
+            if transmitter ~= dest && msg.HTL > 0
+                msg.HTL = msg.HTL - 1;
                 dest_coord = obj.simState.platforms{dest}.getX(1:3);
                 transmitter_coord = obj.simState.platforms{transmitter}.getX(1:3);
                 D = pdist([transmitter_coord'; dest_coord'], 'euclidean'); % Eucledian Distance
@@ -483,7 +486,9 @@ classdef Pelican<Steppable & Platform
                 end
                 
                 % Create a message with data as plumedetect
-                msg = uav_message(uav_no, obj.simState, "plumeDetected", 1);
+                dest = 0; % 0 means every node is a destination.
+                HTL = 1;  % Hops to Live.
+                msg = uav_message(obj.simState, uav_no, dest, HTL,  "plumeDetected", 1);
                 if isempty(obj.out_msg_queue)
                     obj.out_msg_queue = [obj.out_msg_queue, msg];
                 end

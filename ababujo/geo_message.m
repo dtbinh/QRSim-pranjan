@@ -16,7 +16,7 @@ classdef geo_message
     end
     
     methods
-        function obj = geo_message(simState, src, dest, petal_width_percent, data)
+        function obj = geo_message(simState, src, dest, petal_width_percent, data, mark_points)
             %petal_width is the SEMI-minor axis length of the prolate
             %spheroid.
             obj.id = char(java.util.UUID.randomUUID);
@@ -36,16 +36,34 @@ classdef geo_message
             obj.major_axis = sqrt(power(D,2) + power(petal_width, 2));
             obj.data = data;
             obj.repeat_locations = containers.Map();
-            mark_src_dst = 0;
-            if mark_src_dst == 1
+            if mark_points == 1
                 scatter3(obj.sloc(1), obj.sloc(2), obj.sloc(3)-2, 60, 'Magenta', 'filled');
                 scatter3(obj.dloc(1), obj.dloc(2), obj.dloc(3)-2, 60, "*", 'Magenta');
             end
+            
             %fprintf("Distance between the source and the destination = %f\n", D*2);
             %fprintf("Major axis length = %f\n", obj.major_axis);
             %fprintf("Minor axis length = %f\n", obj.minor_axis);
             %aaa = (obj.sloc - obj.dloc)/2;
             %[x, y, z] = ellipsoid(aaa(1), aaa(2), aaa(3) ,obj.major_axis, obj.minor_axis, obj.minor_axis, 10);
+%              p = (obj.sloc + obj.dloc)/2;
+%             [x,y,z] = ellipsoid(p(1), p(2), p(3), obj.major_axis/simState.dist_scale, obj.minor_axis/simState.dist_scale, obj.minor_axis/simState.dist_scale);
+%             [x,y,z] = ellipsoid(p(1), p(2), p(3), obj.major_axis/simState.dist_scale, obj.minor_axis/simState.dist_scale, obj.major_axis/simState.dist_scale);
+%             [x,y,z] = ellipsoid(p(1), p(2), p(3), obj.major_axis/simState.dist_scale, obj.major_axis/simState.dist_scale, obj.minor_axis/simState.dist_scale);
+%             
+%            [x,y,z] = ellipsoid(p(1), p(2), p(3), obj.minor_axis/simState.dist_scale, obj.major_axis/simState.dist_scale, obj.major_axis/simState.dist_scale);
+%             [x,y,z] = ellipsoid(p(1), p(2), p(3), obj.minor_axis/simState.dist_scale, obj.major_axis/simState.dist_scale, obj.minor_axis/simState.dist_scale);
+%               q = obj.sloc - obj.dloc ;
+%              theta = acos(q(1)/ obj.src_dst_dist);
+%              beta =  acos(q(2)/ obj.src_dst_dist);
+%              gama =  acos(q(3)/ obj.src_dst_dist);
+%              S = surf(x,y,z);
+%              rotate(S, [1,0,0], theta* 180);
+%              rotate(S, [0,1,0], beta* 180);
+%              rotate(S, [0,0,1], gama* 180);
+%              [x,y,z] = ellipsoid(p(1), p(2), p(3), obj.minor_axis/simState.dist_scale, obj.minor_axis/simState.dist_scale, obj.major_axis/simState.dist_scale);
+% 
+% 
         end
     end
 end
