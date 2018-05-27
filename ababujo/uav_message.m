@@ -13,6 +13,7 @@ classdef uav_message
         data          % The data
         hop_count     %  % Number of hops this packet made to reach the destination.
         boff_time       % Not used for now.
+        can_update      % Dummy, just to make it compatile with functions accepting geo_message.
     end
     
     methods
@@ -28,6 +29,7 @@ classdef uav_message
             obj.origin_coord = sim_state.platforms{src}.getX(1:3);
             obj.data = data;
             obj.type = type;
+            obj.can_update = 0;
             if mark_points== 1
                 sloc = sim_state.platforms{src}.getX(1:3);
                 dloc = sim_state.platforms{dest}.getX(1:3);

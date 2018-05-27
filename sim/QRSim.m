@@ -222,7 +222,7 @@ classdef QRSim<handle
     
     methods (Access=public)
         
-        function [scat_ct, tr_ct, success, hop_count, end_to_end_delay] = petal_send_message(obj, msg, transmitter, mark_points)
+        function [scat_ct, tr_ct, success, hop_count, end_to_end_delay] = petal_send_message(obj, msg, transmitter, mark_points, boff_type, T_ub)
             % Returns: scat_ct : number of nodes involved by this message
             %                    transmission. (Either transmitted or received)
             %  tr_ct: Number of retransmissions of this message.
@@ -234,14 +234,13 @@ classdef QRSim<handle
                 return
             end
             UTC = datetime(1970,1,1,0,0,0);
-            T_ub = 0.002; % seconds Upper bound on the back off time.
             success = 0;
             tr_ct = 0;
             scat_ct = 0;
             hop_count = 0;
             end_to_end_delay = datetime('now') - UTC;
             for dest= 1: obj.simState.task.N4
-                obj.simState.platforms{transmitter}.send_one_hop_message(msg, transmitter, dest, T_ub);
+                obj.simState.platforms{transmitter}.send_one_hop_message(msg, transmitter, dest, T_ub, boff_type);
             end
             
             done = 0;
@@ -259,18 +258,18 @@ classdef QRSim<handle
                             end_to_end_delay = datetime('now') - r_msg.timestamp;
                             return
                         end
-                        % if this drone is in the prolate spheroid
+                        
                         my_coord = obj.simState.platforms{drone}.getX(1:3);
-                        x1 = pdist([r_msg.sloc'; my_coord'], 'euclidean');
+                        x1 = pdist([r_msg.tloc'; my_coord'], 'euclidean');
                         x2 = pdist([r_msg.dloc'; my_coord'], 'euclidean');
                         X = (x1 + x2) * obj.simState.dist_scale;
-                        if X <= (2 * r_msg.major_axis)
+                        if X <= (2 * r_msg.major_axis)  % if this drone is in the prolate spheroid
                             done = done && 0;
                             t = datetime('now');
                             if ~isbetween(t, UTC, r_msg.boff_time)
                                 r_msg.hop_count = r_msg.hop_count + 1;
                                 for dest= 1:obj.simState.task.N4
-                                    obj.simState.platforms{drone}.send_one_hop_message(r_msg, drone, dest, T_ub);
+                                    obj.simState.platforms{drone}.send_one_hop_message(r_msg, drone, dest, T_ub, boff_type);
                                 end
                                 %fprintf("\n Message %s repeated by %d ", msg.id, drone);
                                 tr_ct = tr_ct + 1;
@@ -279,7 +278,7 @@ classdef QRSim<handle
                                 remove(obj.simState.platforms{drone}.messages, r_msg.id);
                                 obj.simState.platforms{drone}.tr_msgs(r_msg.id) = 1;
                             else
-                                %fprintf(".");
+                                fprintf(".");
                             end
                         else
                             %fprintf("\n Drone %d is out of petal for Message %s", drone, msg.id);
@@ -293,10 +292,10 @@ classdef QRSim<handle
             end
         end
         
-        function scat_ct = app_unicast_petal_routing(obj, src, dest, petal_width, data, mark_points)
-            msg = geo_message(obj.simState, src, dest, petal_width, data, mark_points);
-            [scat_ct, tr_ct, success, hop_count, end_to_end_delay]  = obj.petal_send_message(msg, src, mark_points);
-            fprintf("[scat_ct= %d, tr_ct= %d, success= %d, hop_count= %f, end_to_end_delay= %f]", scat_ct, tr_ct, success, hop_count, seconds(end_to_end_delay));
+        function scat_ct = app_unicast_petal_routing(obj, src, dest, petal_width, data, mark_points, update_petal, boff_type, T_ub)
+            msg = geo_message(obj.simState, src, dest, petal_width, data, mark_points, update_petal);
+            [scat_ct, tr_ct, success, hop_count, end_to_end_delay]  = obj.petal_send_message(msg, src, mark_points, boff_type, T_ub);
+            fprintf("\n[scat_ct= %d, tr_ct= %d, success= %d, hop_count= %f, end_to_end_delay= %f]\n", scat_ct, tr_ct, success, hop_count, seconds(end_to_end_delay));
         end
         
         
@@ -312,9 +311,9 @@ classdef QRSim<handle
             hop_count = 0; % Number of hops made to reach destination.
             UTC = datetime(1970,1,1,0,0,0);
             end_to_end_delay = datetime('now') - UTC;
-
+            boff_type = 99;
             for dest=1:obj.simState.task.N4
-                obj.simState.platforms{transmitter}.send_one_hop_message(msg, transmitter, dest, T_ub);
+                obj.simState.platforms{transmitter}.send_one_hop_message(msg, transmitter, dest, T_ub, boff_type);
             end
             
             done = 0;
@@ -333,7 +332,7 @@ classdef QRSim<handle
                             r_msg.hop_count = r_msg.hop_count + 1;
                             r_msg.HTL = r_msg.HTL - 1;
                             for dest= 1: obj.simState.task.N4
-                                obj.simState.platforms{drone}.send_one_hop_message(r_msg, drone, dest, T_ub);
+                                obj.simState.platforms{drone}.send_one_hop_message(r_msg, drone, dest, T_ub, boff_type);
                             end
                             if mark_points == 1
                                 my_coord = obj.simState.platforms{drone}.getX(1:3);
@@ -353,7 +352,7 @@ classdef QRSim<handle
         function scat_ct = app_unicast_flooding(obj, src, dest, HTL, data, type, mark_points)
             msg = uav_message(obj.simState, src, dest, HTL, data, type, mark_points);
             [scat_ct, tr_ct, success, hop_count, end_to_end_delay] = obj.flood_packet(msg, src, mark_points);
-            fprintf("[scat_ct= %d, tr_ct= %d, success= %d, hop_count= %f, end_to_end_delay= %f]", scat_ct, tr_ct, success, hop_count, seconds(end_to_end_delay));
+            fprintf("\n[scat_ct= %d, tr_ct= %d, success= %d, hop_count= %f, end_to_end_delay= %f]\n", scat_ct, tr_ct, success, hop_count, seconds(end_to_end_delay));
         end
         
         function broadcast_coordinates(obj)

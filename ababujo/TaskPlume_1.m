@@ -52,7 +52,7 @@ classdef TaskPlume_1<Task
             %   params = obj.init();
             %          params - the task parameters
             %
-            fprintf("I was called");
+            fprintf("I was called\n");
             taskparams.dt = 0.2; % task timestep i.e. rate at which controls
             % are supplied and measurements are received
             
@@ -150,6 +150,26 @@ classdef TaskPlume_1<Task
             end
         end
         
+        function uniform_random_formation(obj)
+            N = obj.N4;
+            x_min = -40;
+            x_max = 40;
+            y_min = -40;
+            y_max = 40;
+            z_min = 5;
+            z_max = 50;
+            seed = 1;
+            P = gallery('uniformdata', N, 3, seed);
+            for drone=1:N
+                x = x_min + P(drone, 1) * (x_max - x_min);
+                y = y_min + P(drone, 2) * (y_max - y_min);
+                z = z_min + P(drone, 3) * (z_max - z_min);
+                %fprintf("\n%f %f %f\n", x, y, -z);               
+                obj.simState.platforms{drone}.setX([x; y; -z; 0;0;0;]);
+                obj.PIDs{drone} = VelocityPID(obj.simState.DT);
+            end
+        end
+
         
         function fixed_speherical(obj)
             N = obj.N4;
@@ -193,10 +213,10 @@ classdef TaskPlume_1<Task
         
         
         function reset(obj)
-            formation_type = "mesh"; 
+            formation_type = "random"; 
             switch formation_type
                 case "random"
-                    obj.random_formation();
+                    obj.uniform_random_formation();
                 case "spherical"
                     obj.fixed_speherical();
                 otherwise
