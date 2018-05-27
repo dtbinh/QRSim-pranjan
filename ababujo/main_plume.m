@@ -31,20 +31,8 @@ for i = 1:N
     state.platforms{i}.setTrajectoryColor(traj_colors(mod(i, length(traj_colors))+1));
 end
 
-% a = datetime('now');
-% T_ub = 0.002;  % Upper bound of Backoff Time
-% T_lb = 0;           % Lower bound of Backoff Time
-% boff_time =  T_lb + a + rand() * T_ub;
-% isbetween(datetime('now'), a, boff_time)
-
-unicast = 0;
+unicast = 1;
 evaluate_performance = 0;
-
-mark_points = 0;
-petal_width = 10;
-src_drone = 1;
-dest_drone = 36;
-
 
 for i=1:state.task.durationInSteps
     tloop=tic;
@@ -66,27 +54,41 @@ for i=1:state.task.durationInSteps
     end
     
     if unicast == 1
+        mark_points = 1;
+        src_drone = 1;
+        dest_drone = 36;
         
-        ct = qrsim.app_unicast_flooding(src_drone, dest_drone, 3, "no_data", 2, mark_points);
-        if mark_points == 1; set_invisible_scatter_plots(ct+2);  end
-        ct  = qrsim.app_unicast_petal_routing(src_drone, dest_drone, petal_width, "no_data", mark_points);
-        if mark_points == 1; set_invisible_scatter_plots(ct+2);  end
+        for HTL = 1:6
+            ct = qrsim.app_unicast_flooding(src_drone, dest_drone, HTL, "no_data", 2, mark_points);
+            if mark_points == 1; set_invisible_scatter_plots(ct+2);  end
+        end
+        
+        petal_width = 10;
+        T_ub = 0.002;
+        update_petal = 1;
+        for update_petal=0:1
+            for boff_type = 1:3 % 1->random; 2-> coordinated; 3-> coordinated random
+                ct  = qrsim.app_unicast_petal_routing(src_drone, dest_drone, petal_width, "no_data", mark_points, update_petal, boff_type, T_ub);
+                if mark_points == 1; set_invisible_scatter_plots(ct+2);  end
+            end
+        end
     end
     
     if evaluate_performance == 1
         mark_points = 0;
+        update_petal = 0;
         pairs = state.task.furthest_pairs;
         number_of_msgs = 10;
-     
-        type = "petal";  % options are "flooding" and "petal"
-        petal_sizes = 10:10:60;
-        results_petal = performace_evaluation(qrsim, state, type, pairs, petal_sizes, number_of_msgs, mark_points);
-        plot_graph(results_petal, petal_sizes, pairs);
+        
+         type = "petal";  % options are "flooding" and "petal"
+         petal_sizes = 10:10:60;
+         results_petal = performace_evaluation(qrsim, state, type, pairs, petal_sizes, number_of_msgs, mark_points, update_petal);
+         plot_graph(results_petal, petal_sizes, pairs, "3D Petal Routing", type);
         
         type = "flooding";
         HTLs = 1:1:6;  % HTL array.
         results_flooding = performace_evaluation(qrsim, state, type, pairs, HTLs, number_of_msgs, mark_points);
-        plot_graph(results_flooding, HTLs, pairs);
+        plot_graph(results_flooding, HTLs, pairs, "Limited Flooding", type);
     end
     
     
@@ -111,10 +113,10 @@ function set_invisible_scatter_plots(ct)
         end
 end
 
-function results = performace_evaluation(qrsim, state, type, pairs, arguments, number_of_msgs, mark_points)
+function results = performace_evaluation(qrsim, state, type, pairs, arguments, number_of_msgs, mark_points, update_petal)
     results = zeros(length(arguments) * length(pairs(:, 1)), 8);
     res_idx = 1;
-
+    fprintf("\n Evaluating type = %s\n", type);
     for idx = 1:length(pairs(:, 1))
         src = pairs(idx, 1);
         dest = pairs(idx, 2);
@@ -136,8 +138,10 @@ function results = performace_evaluation(qrsim, state, type, pairs, arguments, n
                         msg = uav_message(state, src, dest, arg, "no_data", 2, mark_points);  % arg will be HTL value
                         [scat_ct, tr_ct, success, hop_count, end_to_end_delay] = qrsim.flood_packet(msg, src, mark_points);                    
                     otherwise
-                        msg = geo_message(state, src, dest, arg, "no_data", mark_points); % arg will be petal width
-                        [scat_ct, tr_ct, success, hop_count, end_to_end_delay] = qrsim.petal_send_message(msg, src, mark_points);
+                        msg = geo_message(state, src, dest, arg, "no_data", mark_points, update_petal); % arg will be petal width
+                        boff_type = 1;
+                        T_ub = 0.002;   % seconds.
+                        [scat_ct, tr_ct, success, hop_count, end_to_end_delay] = qrsim.petal_send_message(msg, src, mark_points, boff_type, T_ub);
                         minor_axis_to_dist_percentage = msg.minor_axis/msg.src_dst_dist * 100;
                 end
                 total_transmissions = total_transmissions + tr_ct;
@@ -168,9 +172,15 @@ function results = performace_evaluation(qrsim, state, type, pairs, arguments, n
 end
 
 
-function plot_graph(results, args, pairs)
+function plot_graph(results, args, pairs, name)
     x = args;
-    figure;
+    figure('Name', name, 'NumberTitle','off');
+    if type == "petal"
+        xlabel_text = "'Petal-width' to 'src-dst distance', '%'";
+    else
+        xlabel_text = "HTL";
+    end
+
     subplot(2,2,1);
     y = zeros(length(args), length(pairs(:, 1)));
     for i = 1: length(args)
@@ -178,6 +188,8 @@ function plot_graph(results, args, pairs)
     end
     bar(x, y);
     title("Success rate");
+    xlabel(xlabel_text);
+    ylabel("Success rate, '%'");
     
     subplot(2,2,2);
     y2 = zeros(length(args), length(pairs(:, 1)));
@@ -186,6 +198,8 @@ function plot_graph(results, args, pairs)
     end
     bar(x, y2);
     title("Average end to end delay");
+    xlabel(xlabel_text);
+    ylabel("Delay 'seconds'");
     
     subplot(2,2,3);
     y3 = zeros(length(args), length(pairs(:, 1)));
@@ -194,7 +208,9 @@ function plot_graph(results, args, pairs)
     end
     bar(x, y3);
     title("Average Number of hops");
-
+    xlabel(xlabel_text);
+    ylabel("Hop count: 50 == inf");
+    
     subplot(2,2,4);
     y4 = zeros(length(args), length(pairs(:, 1)));
     for i = 1: length(args)
@@ -202,5 +218,8 @@ function plot_graph(results, args, pairs)
     end
     bar(x, y4);
     title("Overhead");
+    xlabel(xlabel_text);
+    ylabel("%, 50 == inf");
+
 
 end

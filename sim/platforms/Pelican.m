@@ -370,7 +370,29 @@ classdef Pelican<Steppable & Platform
             RecPower = T - FSPL + N;
         end
         
-        function success = send_one_hop_message(obj, msg, transmitter, dest, T_ub)
+        function boff_time = random_boff_time(~, T_ub)
+            boff_time = T_ub * rand();
+        end
+        
+        function boff_time = coordinated_boff_time(obj, T_ub, pt, msg)
+            % https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Another_vector_formulation
+              u = msg.dloc - msg.sloc;
+              AP = pt - msg.sloc;
+              distance_from_line = norm(cross(AP, u)) / norm(u);
+              
+              distance_from_source = pdist([pt'; msg.sloc'], 'euclidean');
+              p = sqrt(abs(power(distance_from_source, 2) - power(distance_from_line, 2))) * obj.simState.dist_scale;
+              
+              t_ub_1 = T_ub * p /msg.src_dst_dist;
+              
+              u1 = msg.tloc - msg.sloc;
+              AP1 = pt - msg.tloc;
+              distance_from_new_line = norm(cross(AP1, u1)) / norm(u1);
+              tr_dst_distance = pdist([msg.tloc'; msg.dloc'], 'euclidean');
+              boff_time = t_ub_1 * distance_from_new_line / tr_dst_distance;
+        end
+        
+        function success = send_one_hop_message(obj, msg, transmitter, dest, T_ub, boff_type)
             if dest ~= transmitter && dest ~= msg.src && isKey(obj.simState.platforms{dest}.messages, msg.id) == 0 && isKey(obj.simState.platforms{dest}.tr_msgs, msg.id) == 0
                     % the message has not been already heard or transmitted
                     % by the destination.
@@ -390,8 +412,31 @@ classdef Pelican<Steppable & Platform
                     success = 0;
                 else
                     success = 1;
-                    boff_time =  datetime('now') +  T_ub * seconds(rand());
-                    msg.boff_time = boff_time;
+                    switch boff_type
+                        case 1 % "random"
+                             %boff_time =  datetime('now') +  T_ub * seconds(rand());
+                             %msg.boff_time = boff_time;
+                             boff_time = seconds(obj.random_boff_time(T_ub));
+                             msg.boff_time = datetime('now') +  boff_time;
+                             %dt = msg.boff_time - msg.timestamp;
+                             %dt.Format = 'hh:mm:ss.SSSSSSSSS';
+                             %dt
+                        case 2 % "coordinated"
+                            boff_time = seconds(obj.coordinated_boff_time(T_ub, transmitter_coord, msg));
+                            msg.boff_time = datetime('now') + boff_time;
+                        case 3 % "coordinated_random"
+                            boff_time = obj.coordinated_boff_time(T_ub, transmitter_coord, msg);
+                            msg.boff_time = datetime('now') +  seconds(obj.random_boff_time(boff_time));
+                        otherwise 
+                            msg.boff_time = msg.timestamp;
+                    end
+                    if msg.can_update == 1 && msg.src ~= transmitter
+                        msg.tloc = obj.simState.platforms{transmitter}.getX(1:3);
+                        D = pdist([msg.tloc'; msg.dloc'], 'euclidean') * obj.simState.dist_scale/2;
+                        petal_width = msg.petal_width_percent * D / 100;
+                        msg.minor_axis = petal_width;
+                        msg.major_axis = sqrt(power(D,2) + power(petal_width, 2));
+                    end
                     obj.simState.platforms{dest}.messages(msg.id) = msg;
                 end
             end
