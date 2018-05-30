@@ -31,8 +31,8 @@ for i = 1:N
     state.platforms{i}.setTrajectoryColor(traj_colors(mod(i, length(traj_colors))+1));
 end
 
-unicast = 1;
-evaluate_performance = 0;
+unicast = 0;
+evaluate_performance = 1;
 
 for i=1:state.task.durationInSteps
     tloop=tic;
@@ -80,10 +80,10 @@ for i=1:state.task.durationInSteps
         pairs = state.task.furthest_pairs;
         number_of_msgs = 10;
         
-         type = "petal";  % options are "flooding" and "petal"
-         petal_sizes = 10:10:60;
-         results_petal = performace_evaluation(qrsim, state, type, pairs, petal_sizes, number_of_msgs, mark_points, update_petal);
-         plot_graph(results_petal, petal_sizes, pairs, "3D Petal Routing", type);
+        type = "petal";  % options are "flooding" and "petal"
+        petal_sizes = 10:10:60;
+        results_petal = performace_evaluation(qrsim, state, type, pairs, petal_sizes, number_of_msgs, mark_points, update_petal);
+        plot_graph(results_petal, petal_sizes, pairs, "3D Petal Routing", type);
         
         type = "flooding";
         HTLs = 1:1:6;  % HTL array.
@@ -127,9 +127,9 @@ function results = performace_evaluation(qrsim, state, type, pairs, arguments, n
             total_number_of_hops = 0;
             total_transmissions = 0;
             total_end_to_end_delay = 0;
-            avg_end_to_end_delay = seconds(50);
-            avg_number_hops = 50;
-            overhead = inf;
+            avg_end_to_end_delay = seconds(0);
+            avg_number_hops = 0;
+            overhead = 0;
 
             for run_no = 1: number_of_msgs
                 switch type
@@ -172,7 +172,7 @@ function results = performace_evaluation(qrsim, state, type, pairs, arguments, n
 end
 
 
-function plot_graph(results, args, pairs, name)
+function plot_graph(results, args, pairs, name, type)
     x = args;
     figure('Name', name, 'NumberTitle','off');
     if type == "petal"
@@ -186,40 +186,77 @@ function plot_graph(results, args, pairs, name)
     for i = 1: length(args)
         y(i, :) = results(i: length(args): length(results), 5);
     end
-    bar(x, y);
+    %bar(x, y);
+    errorbar(x, mean(y,2), std(y,0,2), 'o');
     title("Success rate");
     xlabel(xlabel_text);
     ylabel("Success rate, '%'");
+    yticks(0:10:100)
+    xlim([0 inf])
+    xticks([0, x])
+    grid on
     
     subplot(2,2,2);
     y2 = zeros(length(args), length(pairs(:, 1)));
     for i = 1: length(args)
         y2(i, :) = results(i: length(args): length(results), 6);
     end
-    bar(x, y2);
+    %bar(x, y2);
+    errorbar(x, mean(y2,2), std(y2,0,2), 'o');
+    grid on
     title("Average end to end delay");
     xlabel(xlabel_text);
     ylabel("Delay 'seconds'");
+    ylim([0 0.3]);
+    yticks(0:0.02:0.25);
+    xticks([0, x])
+    xlim([0 inf])
+    text(-1, 0.28, "\approx", 'Fontsize', 20);
+%     for i=1:length(y2)
+%         if y2(i) == 0
+%             text(x(i)-1, 0.04, "\infty", 'Fontsize', 20)
+%         end
+%     end
+    
     
     subplot(2,2,3);
     y3 = zeros(length(args), length(pairs(:, 1)));
     for i = 1: length(args)
         y3(i, :) = results(i: length(args): length(results), 7);
     end
-    bar(x, y3);
+    %bar(x, y3);
+    errorbar(x, mean(y3,2), std(y3,0,2), 'o');
+
+    grid on
     title("Average Number of hops");
     xlabel(xlabel_text);
-    ylabel("Hop count: 50 == inf");
+    ylabel("Average Number of Hops");
+    ylim([0 20]);
+    yticks(0:1:15);
+    xticks([0, x])
+    xlim([0 inf])
+    text(-1, 18, "\approx", 'Fontsize', 20);
+%     for i = 1:length(y3)
+%         if y3(i) == 0
+%             text(x(i)-1, 2, "\infty", 'Fontsize', 20);
+%         end
+%     end
+    
     
     subplot(2,2,4);
     y4 = zeros(length(args), length(pairs(:, 1)));
     for i = 1: length(args)
         y4(i, :) = results(i: length(args): length(results), 8);
     end
-    bar(x, y4);
+    %bar(x, y4);
+    errorbar(x, mean(y4,2), std(y4,0,2), 'o');
+
+    grid on
     title("Overhead");
     xlabel(xlabel_text);
-    ylabel("%, 50 == inf");
-
-
+    ylabel("Overhead %");
+    ylim([0 100]);
+    yticks(0:10:100);
+    xlim([0 inf])
+    xticks([0 x])
 end

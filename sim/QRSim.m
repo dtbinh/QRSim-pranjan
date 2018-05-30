@@ -310,7 +310,7 @@ classdef QRSim<handle
             success = 0;   % Message successfully delivered?
             hop_count = 0; % Number of hops made to reach destination.
             UTC = datetime(1970,1,1,0,0,0);
-            end_to_end_delay = datetime('now') - UTC;
+            end_to_end_delay = UTC - UTC;
             boff_type = 99;
             for dest=1:obj.simState.task.N4
                 obj.simState.platforms{transmitter}.send_one_hop_message(msg, transmitter, dest, T_ub, boff_type);
