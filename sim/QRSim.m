@@ -222,7 +222,7 @@ classdef QRSim<handle
     
     methods (Access=public)
         
-        function [scat_ct, tr_ct, success, hop_count, end_to_end_delay] = petal_send_message(obj, msg, transmitter, mark_points, boff_type, T_ub)
+        function [mark_pt_ct, tr_ct, success, hop_count, end_to_end_delay] = petal_send_message(obj, msg, transmitter, mark_points, boff_type, T_ub)
             % Returns: scat_ct : number of nodes involved by this message
             %                    transmission. (Either transmitted or received)
             %  tr_ct: Number of retransmissions of this message.
@@ -236,7 +236,7 @@ classdef QRSim<handle
             UTC = datetime(1970,1,1,0,0,0);
             success = 0;
             tr_ct = 0;
-            scat_ct = 0;
+            mark_pt_ct = 0;
             hop_count = 0;
             end_to_end_delay = datetime('now') - UTC;
             for dest= 1: obj.simState.task.N4
@@ -251,49 +251,72 @@ classdef QRSim<handle
                         % if the destination drone has received the
                         % message.
                         r_msg = obj.simState.platforms{drone}.messages(msg.id);
-                        if drone == msg.dest
+                        my_coord = obj.simState.platforms{drone}.getX(1:3);
+                        if drone == r_msg.dest
                             %fprintf("Drone %d received the message %s", drone, msg.id);
                             success = 1;
                             hop_count = r_msg.hop_count;
                             end_to_end_delay = datetime('now') - r_msg.timestamp;
-                            return
-                        end
-                        
-                        my_coord = obj.simState.platforms{drone}.getX(1:3);
-                        x1 = pdist([r_msg.tloc'; my_coord'], 'euclidean');
-                        x2 = pdist([r_msg.dloc'; my_coord'], 'euclidean');
-                        X = (x1 + x2) * obj.simState.dist_scale;
-                        if X <= (2 * r_msg.major_axis)  % if this drone is in the prolate spheroid
-                            done = done && 0;
-                            t = datetime('now');
-                            if ~isbetween(t, UTC, r_msg.boff_time)
-                                r_msg.hop_count = r_msg.hop_count + 1;
-                                for dest= 1:obj.simState.task.N4
-                                    obj.simState.platforms{drone}.send_one_hop_message(r_msg, drone, dest, T_ub, boff_type);
-                                end
-                                %fprintf("\n Message %s repeated by %d ", msg.id, drone);
-                                tr_ct = tr_ct + 1;
-                                scat_ct = scat_ct + 1;
-                                if mark_points == 1; scatter3(my_coord(1), my_coord(2), my_coord(3)-2, 60, 'red', 'filled'); end
-                                remove(obj.simState.platforms{drone}.messages, r_msg.id);
-                                obj.simState.platforms{drone}.tr_msgs(r_msg.id) = 1;
-                            else
-                                fprintf(".");
+                            if mark_points == 1
+                                %line([r_msg.tloc(1), my_coord(1)], [r_msg.tloc(2), my_coord(2)], [r_msg.tloc(3), my_coord(3)], 'Color','red');
+                                text(my_coord(1), my_coord(2), my_coord(3)-1, "\otimes", 'Fontsize', 20);
+                                mark_pt_ct = mark_pt_ct + 1;
                             end
                         else
-                            %fprintf("\n Drone %d is out of petal for Message %s", drone, msg.id);
-                            if mark_points == 1;  scatter3(my_coord(1), my_coord(2), my_coord(3)-1, 60, 'black', 'filled'); end
-                            remove(obj.simState.platforms{drone}.messages, r_msg.id);
-                            obj.simState.platforms{drone}.tr_msgs(r_msg.id) = 1;
-                            scat_ct = scat_ct + 1;
+                            if r_msg.dest == 0  % this is a broadcast packet.
+                                XX = pdist([r_msg.dloc'; my_coord'], 'euclidean');
+                                if XX <= r_msg.radius   % The drone is inside the destination sphere.
+                                    success = 1;
+                                    hop_count = r_msg.hop_count;
+                                    end_to_end_delay = datetime('now') - r_msg.timestamp;
+                                    if mark_points == 1
+                                        %line([r_msg.tloc(1), my_coord(1)], [r_msg.tloc(2), my_coord(2)], [r_msg.tloc(3), my_coord(3)], 'Color','red');
+                                        text(my_coord(1), my_coord(2), my_coord(3)-1, "\otimes", 'Fontsize', 20);
+                                        mark_pt_ct = mark_pt_ct + 1;
+                                    end
+                                end
+                            end
+                            x1 = pdist([r_msg.tloc'; my_coord'], 'euclidean');
+                            x2 = pdist([r_msg.dloc'; my_coord'], 'euclidean');
+                            X = (x1 + x2) * obj.simState.dist_scale;
+                            if X <= (2 * r_msg.major_axis)  % if this drone is in the prolate spheroid
+                                done = done && 0;
+                                t = datetime('now');
+                                if ~isbetween(t, UTC, r_msg.boff_time)
+                                    r_msg.hop_count = r_msg.hop_count + 1;
+                                    for dest= 1:obj.simState.task.N4
+                                        obj.simState.platforms{drone}.send_one_hop_message(r_msg, drone, dest, T_ub, boff_type);
+                                    end
+                                    %fprintf("\n Message %s repeated by %d ", msg.id, drone);
+                                    tr_ct = tr_ct + 1;
+                                    if mark_points == 1
+                                        scatter3(my_coord(1), my_coord(2), my_coord(3)-2, 60, 'red', 'filled'); 
+                                        %line([r_msg.tloc(1), my_coord(1)], [r_msg.tloc(2), my_coord(2)], [r_msg.tloc(3), my_coord(3)], 'Color','red');
+                                        mark_pt_ct = mark_pt_ct + 1;
+                                    end
+                                    remove(obj.simState.platforms{drone}.messages, r_msg.id);
+                                    obj.simState.platforms{drone}.tr_msgs(r_msg.id) = 1;
+                                else
+                                    fprintf(".");
+                                end
+                            else
+                                %fprintf("\n Drone %d is out of petal for Message %s", drone, msg.id);
+                                if mark_points == 1
+                                    scatter3(my_coord(1), my_coord(2), my_coord(3)-1, 60, 'black', 'filled');
+                                    %line([r_msg.tloc(1), my_coord(1)], [r_msg.tloc(2), my_coord(2)], [r_msg.tloc(3), my_coord(3)], 'Color','red');
+                                    mark_pt_ct = mark_pt_ct + 1;
+                                end
+                                remove(obj.simState.platforms{drone}.messages, r_msg.id);
+                                obj.simState.platforms{drone}.tr_msgs(r_msg.id) = 1;  
+                            end
                         end
                     end
                 end
             end
         end
         
-        function scat_ct = app_unicast_petal_routing(obj, src, dest, petal_width, data, mark_points, update_petal, boff_type, T_ub)
-            msg = geo_message(obj.simState, src, dest, petal_width, data, mark_points, update_petal);
+        function scat_ct = app_unicast_petal_routing(obj, src, dest, petal_width, data, mark_points, update_petal, boff_type, T_ub, radius)
+            msg = geo_message(obj.simState, src, dest, petal_width, data, mark_points, update_petal, radius);
             [scat_ct, tr_ct, success, hop_count, end_to_end_delay]  = obj.petal_send_message(msg, src, mark_points, boff_type, T_ub);
             fprintf("\n[scat_ct= %d, tr_ct= %d, success= %d, hop_count= %f, end_to_end_delay= %f]\n", scat_ct, tr_ct, success, hop_count, seconds(end_to_end_delay));
         end
@@ -326,8 +349,8 @@ classdef QRSim<handle
                             success = 1;
                             hop_count = r_msg.hop_count;
                             end_to_end_delay = datetime('now') - r_msg.timestamp;
-                        
-                        elseif r_msg.HTL > 0 
+                            
+                        elseif r_msg.HTL > 0
                             done = done && 0;
                             r_msg.hop_count = r_msg.hop_count + 1;
                             r_msg.HTL = r_msg.HTL - 1;
@@ -336,9 +359,9 @@ classdef QRSim<handle
                             end
                             if mark_points == 1
                                 my_coord = obj.simState.platforms{drone}.getX(1:3);
-                                scatter3(my_coord(1), my_coord(2), my_coord(3), 60, 'red', 'filled'); 
+                                scatter3(my_coord(1), my_coord(2), my_coord(3), 60, 'red', 'filled');
                             end
-
+                            
                             tr_ct = tr_ct + 1;
                             scat_ct = scat_ct + 1;
                             remove(obj.simState.platforms{drone}.messages, r_msg.id);
@@ -369,7 +392,7 @@ classdef QRSim<handle
                 end
             end
             UTC = datetime(1970,1,1,0,0,0);
-
+            
             % In this loop all the messages in the network are being
             % forwarded untill the broadcast dies out.
             done = 0;
