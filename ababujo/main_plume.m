@@ -31,8 +31,8 @@ for i = 1:N
     state.platforms{i}.setTrajectoryColor(traj_colors(mod(i, length(traj_colors))+1));
 end
 
-unicast = 0;
-evaluate_performance = 1;
+unicast = 1;
+evaluate_performance = 0;
 
 for i=1:state.task.durationInSteps
     tloop=tic;
@@ -58,17 +58,18 @@ for i=1:state.task.durationInSteps
         src_drone = 1;
         dest_drone = 36;
         
-        for HTL = 1:6
-            ct = qrsim.app_unicast_flooding(src_drone, dest_drone, HTL, "no_data", 2, mark_points);
-            if mark_points == 1; set_invisible_scatter_plots(ct+2);  end
-        end
-        
-        petal_width = 10;
+%         for HTL = 1:6
+%             ct = qrsim.app_unicast_flooding(src_drone, dest_drone, HTL, "no_data", 2, mark_points);
+%             if mark_points == 1; set_invisible_scatter_plots(ct+2);  end
+%         end
+        dloc = state.platforms{dest_drone}.getX(1:3);
+        petal_width = 40;
         T_ub = 0.002;
         update_petal = 1;
-        for update_petal=0:1
+        for radius=10:10:30
             for boff_type = 1:3 % 1->random; 2-> coordinated; 3-> coordinated random
-                ct  = qrsim.app_unicast_petal_routing(src_drone, dest_drone, petal_width, "no_data", mark_points, update_petal, boff_type, T_ub);
+%                ct  = qrsim.app_unicast_petal_routing(src_drone, dest_drone, petal_width, "no_data", mark_points, update_petal, boff_type, T_ub, radius);
+                ct  = qrsim.app_unicast_petal_routing(src_drone, dloc, petal_width, "no_data", mark_points, update_petal, boff_type, T_ub, radius);
                 if mark_points == 1; set_invisible_scatter_plots(ct+2);  end
             end
         end
@@ -138,7 +139,7 @@ function results = performace_evaluation(qrsim, state, type, pairs, arguments, n
                         msg = uav_message(state, src, dest, arg, "no_data", 2, mark_points);  % arg will be HTL value
                         [scat_ct, tr_ct, success, hop_count, end_to_end_delay] = qrsim.flood_packet(msg, src, mark_points);                    
                     otherwise
-                        msg = geo_message(state, src, dest, arg, "no_data", mark_points, update_petal); % arg will be petal width
+                        msg = geo_message(state, src, dest, arg, "no_data", mark_points, update_petal, 0); % arg will be petal width
                         boff_type = 1;
                         T_ub = 0.002;   % seconds.
                         [scat_ct, tr_ct, success, hop_count, end_to_end_delay] = qrsim.petal_send_message(msg, src, mark_points, boff_type, T_ub);
