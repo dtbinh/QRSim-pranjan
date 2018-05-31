@@ -283,16 +283,27 @@ classdef QRSim<handle
                                 done = done && 0;
                                 t = datetime('now');
                                 if ~isbetween(t, UTC, r_msg.boff_time)
-                                    r_msg.hop_count = r_msg.hop_count + 1;
-                                    for dest= 1:obj.simState.task.N4
-                                        obj.simState.platforms{drone}.send_one_hop_message(r_msg, drone, dest, T_ub, boff_type);
-                                    end
-                                    %fprintf("\n Message %s repeated by %d ", msg.id, drone);
-                                    tr_ct = tr_ct + 1;
-                                    if mark_points == 1
-                                        scatter3(my_coord(1), my_coord(2), my_coord(3)-2, 60, 'red', 'filled'); 
-                                        %line([r_msg.tloc(1), my_coord(1)], [r_msg.tloc(2), my_coord(2)], [r_msg.tloc(3), my_coord(3)], 'Color','red');
-                                        mark_pt_ct = mark_pt_ct + 1;
+                                    % Check if this node should retransmit.
+                                    centroid_coords = mean(obj.simState.platforms{drone}.duplicates(msg.id), 2);
+                                    centroid_dist = pdist([centroid_coords'; r_msg.dloc'], 'euclidean');
+                                    my_dest_dist = pdist([my_coord'; r_msg.dloc'], 'euclidean');
+                                    if centroid_dist >= my_dest_dist
+                                        % Centroid is further than self.
+                                        % hence transmit.
+                                        r_msg.hop_count = r_msg.hop_count + 1;
+                                        for dest= 1:obj.simState.task.N4
+                                            obj.simState.platforms{drone}.send_one_hop_message(r_msg, drone, dest, T_ub, boff_type);
+                                        end
+                                        %fprintf("\n Message %s repeated by %d ", msg.id, drone);
+                                        tr_ct = tr_ct + 1;
+                                        if mark_points == 1
+                                            scatter3(my_coord(1), my_coord(2), my_coord(3)-2, 60, 'red', 'filled'); 
+                                            %line([r_msg.tloc(1), my_coord(1)], [r_msg.tloc(2), my_coord(2)], [r_msg.tloc(3), my_coord(3)], 'Color','red');
+                                            mark_pt_ct = mark_pt_ct + 1;
+                                        end
+                                    elseif mark_points == 1
+                                            scatter3(my_coord(1), my_coord(2), my_coord(3)-2, 60, 'green', 'filled');
+                                            mark_pt_ct = mark_pt_ct + 1;
                                     end
                                     remove(obj.simState.platforms{drone}.messages, r_msg.id);
                                     obj.simState.platforms{drone}.tr_msgs(r_msg.id) = 1;

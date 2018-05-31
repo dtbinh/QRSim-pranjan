@@ -68,6 +68,7 @@ classdef Pelican<Steppable & Platform
         out_msg_queue;  % pranjan.
         messages;       % pranjan. The messages which are in the queue.
         tr_msgs;         % pranjan. The messages that have been transmitted by this node.
+        duplicates;     % pranjan. Hash table of message_id -> duplicate locations. Used in deciding whether a UAV should transmit a message.
         uav_coord;      % pranjan. A platform shall store the coordinates of other UAVs. This info shall be collected through messages.
         plume_coord;    % pranjan. A platform shall store the coordinates where plumes have been detected.
         peer_contact_time; % pranjan. The last time this peer had contacted.
@@ -135,6 +136,7 @@ classdef Pelican<Steppable & Platform
             obj.out_msg_queue = [];
             obj.messages = containers.Map();
             obj.tr_msgs = containers.Map();
+            obj.duplicates = containers.Map();
             %obj.transmitter_strength = 20;  % pranjan TODO: Initialize it through objparams.
             obj.uav_coord = zeros(3, obj.simState.task.N4);
             obj.plume_coord = zeros(3, obj.simState.task.N4);
@@ -393,9 +395,8 @@ classdef Pelican<Steppable & Platform
         end
         
         function success = send_one_hop_message(obj, msg, transmitter, dest, T_ub, boff_type)
-            if dest ~= transmitter && dest ~= msg.src && isKey(obj.simState.platforms{dest}.messages, msg.id) == 0 && isKey(obj.simState.platforms{dest}.tr_msgs, msg.id) == 0
-                    % the message has not been already heard or transmitted
-                    % by the destination.
+            if dest ~= transmitter && dest ~= msg.src && isKey(obj.simState.platforms{dest}.tr_msgs, msg.id) == 0
+                % the message has not been already transmitted by the destination.
                 dest_coord = obj.simState.platforms{dest}.getX(1:3);
                 transmitter_coord = obj.simState.platforms{transmitter}.getX(1:3);
                 D = pdist([transmitter_coord'; dest_coord'], 'euclidean'); % Eucledian Distance
@@ -412,6 +413,14 @@ classdef Pelican<Steppable & Platform
                     success = 0;
                 else
                     success = 1;
+                    % the message is a duplicate, then simply mark such transmissions.
+                    if isKey(obj.simState.platforms{dest}.duplicates, msg.id)
+                        obj.simState.platforms{dest}.duplicates(msg.id) = [obj.simState.platforms{dest}.duplicates(msg.id), transmitter_coord];
+                        return;
+                    else
+                        obj.simState.platforms{dest}.duplicates(msg.id) = transmitter_coord;
+                    end
+
                     switch boff_type
                         case 1 % "random"
                              %boff_time =  datetime('now') +  T_ub * seconds(rand());
@@ -553,14 +562,14 @@ classdef Pelican<Steppable & Platform
             % ababujo: Global code if this platform detects any obstacle or
             % other drone in its sensing distance
             ob = 0 ;
-            for j=1:length(obj.simState.platforms),
-                for p=1:size(obj.simState.environment.area.obstacles,2),
+            for j=1:length(obj.simState.platforms)
+                for p=1:size(obj.simState.environment.area.obstacles,2)
                     if(abs(abs(obj.simState.environment.area.obstacles(1,p))-abs(obj.simState.platforms{j}.X(1))) < obj.simState.platforms{j}.getSensingDistance())
                         obj.simState.task.f{j} = 1;
                         ob = 1;
                     end
                 end
-                for i=1:length(obj.simState.platforms),
+                for i=1:length(obj.simState.platforms)
                     if(obj.simState.platforms{i} ~= obj.simState.platforms{j})
                         if(norm(obj.simState.platforms{i}.X(1:3)-obj.simState.platforms{j}.X(1:3))< obj.simState.platforms{j}.getSensingDistance())
                             obj.simState.task.d{j} = 1;
@@ -593,7 +602,7 @@ classdef Pelican<Steppable & Platform
             %
             assert(size(U,1)==5,'pelican:inputoob','wrong size of control inputs should be 5xN\n\tU = [pt;rl;th;ya;bat] \n');
             
-            for i = 1:size(U,2),
+            for i = 1:size(U,2)
                 assert(~(any(U(:,i)<obj.CONTROL_LIMITS(:,1)) || any(U(:,i)>obj.CONTROL_LIMITS(:,2))),...
                     'pelican:inputoob',['control inputs values not within limits \n',...
                     '\tU = [pt;rl;th;ya;bat] \n\n\tpt  [-0.9..0.9] rad commanded pitch \n\trl  [-0.9..0.9] rad commanded roll \n',...
@@ -636,7 +645,7 @@ classdef Pelican<Steppable & Platform
                         end
                     end
                 end
-                for p=1:size(obj.simState.environment.area.obstacles,2),
+                for p=1:size(obj.simState.environment.area.obstacles,2)
                     if(abs(abs(obj.simState.environment.area.obstacles(1:2,p))-abs(obj.simState.platforms{i}.X(1:2))) < obj.simState.platforms{i}.getCollisionDistance())
                         coll = 1;
                         fprintf('%d\n',obj.simState.platforms{i}.X(1:3));
