@@ -14,7 +14,6 @@ classdef geo_message
         src_dst_dist    % Distance between the source and the destination.
         data        % The data
         hop_count   % Number of hops this packet made to reach the destination.
-        repeat_locations % hash table of the drone->location
         can_update  % Boolean to indicate whether a transmitter is allowed to modify petal_width, minor_axis, major_axis and tloc 
         petal_width_percent % minor_axis * 100 / src_dst_distance 
     end
@@ -49,7 +48,6 @@ classdef geo_message
             obj.minor_axis = petal_width;
             obj.major_axis = sqrt(power(D,2) + power(petal_width, 2));
             obj.data = data;
-            obj.repeat_locations = containers.Map();
             if mark_points == 1
                 scatter3(obj.sloc(1), obj.sloc(2), obj.sloc(3)-2, 60, 'Magenta', 'filled');
                 scatter3(obj.dloc(1), obj.dloc(2), obj.dloc(3)-2, 60, "*", 'Magenta');
