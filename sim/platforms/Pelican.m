@@ -55,7 +55,7 @@ classdef Pelican<Steppable & Platform
     
     properties (Access = public)
         % Source: http://www.ti.com/lit/ds/symlink/wl1805mod.pdf section 5.7
-        % 18 Mbps OFDM, TYP transmitter power,  
+        % 18 Mbps OFDM, TYP transmitter power,
         transmitter_strength = 17;  % pranjan in Dbm. WL18xxMOD WiLink™ Wi-Fi®  Used in Beaglebone black
         receiver_threshold = -87; % pranjan in Dbm. same source. section 5.6.
         transmission_frequency = 2400; % MHz
@@ -353,15 +353,15 @@ classdef Pelican<Steppable & Platform
         
         function p = get_message_reception_probability(obj, T, D, F, Dth)
             sigma = 2;     % Standard deviation for the gaussian random variable N
-            mmean = -10;       % Mean for the gaussian radom variable N
+            mmean = -20;       % Mean for the gaussian radom variable N
             RecPower = obj.get_rec_power(T, D, F, mmean, sigma);
             if RecPower  > Dth
                 p = 1;
             else
                 p = 0;
-            end 
+            end
         end
-
+        
         function RecPower = get_rec_power(~, T, D, F, mmean, sigma)
             % T in Dbm
             % D in m
@@ -376,22 +376,24 @@ classdef Pelican<Steppable & Platform
             boff_time = T_ub * rand();
         end
         
-        function boff_time = coordinated_boff_time(obj, T_ub, pt, msg)
+        function boff_time = coordinated_boff_time(obj, msg, pt, T_ub, t_x)
             % https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Another_vector_formulation
-              u = msg.dloc - msg.sloc;
-              AP = pt - msg.sloc;
-              distance_from_line = norm(cross(AP, u)) / norm(u);
-              
-              distance_from_source = pdist([pt'; msg.sloc'], 'euclidean');
-              p = sqrt(abs(power(distance_from_source, 2) - power(distance_from_line, 2))) * obj.simState.dist_scale;
-              
-              t_ub_1 = T_ub * p /msg.src_dst_dist;
-              
-              u1 = msg.tloc - msg.sloc;
-              AP1 = pt - msg.tloc;
-              distance_from_new_line = norm(cross(AP1, u1)) / norm(u1);
-              tr_dst_distance = pdist([msg.tloc'; msg.dloc'], 'euclidean');
-              boff_time = t_ub_1 * distance_from_new_line / tr_dst_distance;
+            u = msg.dloc - msg.sloc;
+            AP = pt - msg.sloc;
+            distance_from_line = norm(cross(AP, u)) / norm(u);
+            distance_from_source = norm(AP);
+            
+            p = sqrt(abs(power(distance_from_source, 2) - power(distance_from_line, 2))) * obj.simState.dist_scale;
+            
+            t_ub_1 = T_ub * (msg.src_dst_dist - p) /msg.src_dst_dist;
+            
+            u1 = msg.dloc - msg.tloc;
+            AP1 = pt - msg.tloc;
+            distance_from_new_line = norm(cross(AP1, u1)) / norm(u1);
+            tr_dst_distance = norm(u1);
+            
+            t_ub_2 = t_x * distance_from_new_line/ tr_dst_distance;
+            boff_time = t_ub_1 + t_ub_2;
         end
         
         function success = send_one_hop_message(obj, msg, transmitter, dest, T_ub, boff_type)
@@ -399,8 +401,8 @@ classdef Pelican<Steppable & Platform
                 % the message has not been already transmitted by the destination.
                 dest_coord = obj.simState.platforms{dest}.getX(1:3);
                 transmitter_coord = obj.simState.platforms{transmitter}.getX(1:3);
-                D = pdist([transmitter_coord'; dest_coord'], 'euclidean'); % Eucledian Distance
-                D = D * obj.simState.dist_scale; % Scale D      
+                D = norm(transmitter_coord - dest_coord);  % Eucledian Distance
+                D = D * obj.simState.dist_scale; % Scale D
                 T = obj.simState.platforms{transmitter}.transmitter_strength; % Souce Transmission strength.
                 Dth = obj.simState.platforms{dest}.receiver_threshold;
                 F = obj.simState.platforms{transmitter}.transmission_frequency; % Transmission Frequency
@@ -420,23 +422,24 @@ classdef Pelican<Steppable & Platform
                     else
                         obj.simState.platforms{dest}.duplicates(msg.id) = transmitter_coord;
                     end
-
+                    t_x = 0.0005;
                     switch boff_type
                         case 1 % "random"
-                             %boff_time =  datetime('now') +  T_ub * seconds(rand());
-                             %msg.boff_time = boff_time;
-                             boff_time = seconds(obj.random_boff_time(T_ub));
-                             msg.boff_time = datetime('now') +  boff_time;
-                             %dt = msg.boff_time - msg.timestamp;
-                             %dt.Format = 'hh:mm:ss.SSSSSSSSS';
-                             %dt
+                            %boff_time =  datetime('now') +  T_ub * seconds(rand());
+                            %msg.boff_time = boff_time;
+                            boff_time = seconds(obj.random_boff_time(T_ub));
+                            msg.boff_time = datetime('now') +  boff_time;
+                            %dt = msg.boff_time - msg.timestamp;
+                            %dt.Format = 'hh:mm:ss.SSSSSSSSS';
+                            %dt
                         case 2 % "coordinated"
-                            boff_time = seconds(obj.coordinated_boff_time(T_ub, transmitter_coord, msg));
+                            % (obj, msg, pt, T_ub, t_x)
+                            boff_time = seconds(obj.coordinated_boff_time(msg, transmitter_coord, T_ub-t_x, t_x));
                             msg.boff_time = datetime('now') + boff_time;
                         case 3 % "coordinated_random"
-                            boff_time = obj.coordinated_boff_time(T_ub, transmitter_coord, msg);
+                            boff_time = obj.coordinated_boff_time(msg, transmitter_coord, T_ub-t_x, t_x);
                             msg.boff_time = datetime('now') +  seconds(obj.random_boff_time(boff_time));
-                        otherwise 
+                        otherwise
                             msg.boff_time = msg.timestamp;
                     end
                     if msg.can_update == 1 && msg.src ~= transmitter
@@ -457,7 +460,7 @@ classdef Pelican<Steppable & Platform
                 dest_coord = obj.simState.platforms{dest}.getX(1:3);
                 transmitter_coord = obj.simState.platforms{transmitter}.getX(1:3);
                 D = pdist([transmitter_coord'; dest_coord'], 'euclidean'); % Eucledian Distance
-                D = D * obj.simState.dist_scale; % Scale D      
+                D = D * obj.simState.dist_scale; % Scale D
                 T = obj.simState.platforms{transmitter}.transmitter_strength; % Souce Transmission strength.
                 Dth = obj.simState.platforms{dest}.receiver_threshold;
                 F = obj.simState.platforms{transmitter}.transmission_frequency; % Transmission Frequency
@@ -501,8 +504,8 @@ classdef Pelican<Steppable & Platform
                 if msg.type == 2  % Coordinate update
                     %last_contact_time = obj.simState.platforms{uav_no}.peer_contact_time(msg.src);
                     %if last_contact_time <= msg.timestamp
-                        obj.simState.platforms{uav_no}.uav_coord(:,msg.src) = msg.origin_coord;
-                        out(2) = out(2) + 1;
+                    obj.simState.platforms{uav_no}.uav_coord(:,msg.src) = msg.origin_coord;
+                    out(2) = out(2) + 1;
                     %end
                 elseif msg.type == 1  % Plume detected message
                     obj.simState.platforms{uav_no}.plume_coord(:,msg.src) = msg.origin_coord;
@@ -531,9 +534,9 @@ classdef Pelican<Steppable & Platform
                 if obj.simState.send_plume_detected == 0  % If drones don't send plume detected message.
                     return
                 end
-
+                
                 %velocity = obj.getX(7:9);
-
+                
                 if ~isempty(obj.out_msg_queue) && ~obj.simState.repeat_plume_msg
                     % If the drone has already sent a message and should not repeat plume detected message; then don't resend it.
                     return
