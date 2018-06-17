@@ -14,10 +14,9 @@ while True:
     data, address = sock.recvfrom(4096)
     #pdb.set_trace()
     if data:
-        """
-        for i in range(1):
-            ct = 0
-            for j in range(1):
+        ct = 0
+        for i in range(10):
+            for j in range(10):
                 ct += 1
-        """
+                print("{0} ".format(ct), end=" ")
         sent = sock.sendto(data, address)

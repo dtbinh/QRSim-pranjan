@@ -1,6 +1,6 @@
 classdef geo_message
     properties
-        id          % unique uuid       
+        id          % unique uuid
         src         % Source UAV no.
         sloc        % Message origin location
         dest        % Destination UAV no.
@@ -14,13 +14,13 @@ classdef geo_message
         src_dst_dist    % Distance between the source and the destination.
         data        % The data
         hop_count   % Number of hops this packet made to reach the destination.
-        can_update  % Boolean to indicate whether a transmitter is allowed to modify petal_width, minor_axis, major_axis and tloc 
-        petal_width_percent % minor_axis * 100 / src_dst_distance 
+        can_update  % Boolean to indicate whether a transmitter is allowed to modify petal_width, minor_axis, major_axis and tloc
+        petal_width_percent % minor_axis * 100 / src_dst_distance
     end
     
     methods
         function obj = geo_message(simState, src, dest, petal_width_percent, data, mark_points, can_update, radius)
-            % dest should  be either a scalar or a (3 rows * 1 col) vector 
+            % dest should  be either a scalar or a (3 rows * 1 col) vector
             %petal_width is the SEMI-minor axis length of the prolate
             %spheroid.
             obj.id = char(java.util.UUID.randomUUID);
@@ -40,7 +40,7 @@ classdef geo_message
             obj.hop_count = 0;
             obj.can_update = can_update;
             
-            obj.src_dst_dist = pdist([obj.sloc'; obj.dloc'], 'euclidean') * simState.dist_scale;
+            obj.src_dst_dist = norm(obj.sloc - obj.dloc) * simState.dist_scale;
             D = obj.src_dst_dist / 2;
             
             obj.petal_width_percent = petal_width_percent;
@@ -51,40 +51,91 @@ classdef geo_message
             if mark_points == 1
                 scatter3(obj.sloc(1), obj.sloc(2), obj.sloc(3)-2, 60, 'Magenta', 'filled');
                 scatter3(obj.dloc(1), obj.dloc(2), obj.dloc(3)-2, 60, "*", 'Magenta');
-            
-            
-            %fprintf("Distance between the source and the destination = %f\n", D*2);
-            %fprintf("Major axis length = %f\n", obj.major_axis);
-            %fprintf("Minor axis length = %f\n", obj.minor_axis);
-            
-%              
-%             [x,y,z] = ellipsoid(p(1), p(2), p(3), obj.major_axis/simState.dist_scale, obj.minor_axis/simState.dist_scale, obj.minor_axis/simState.dist_scale);
+                
+%                 a = obj.sloc';
+%                 b = obj.dloc';
+%                 c = (a+b) / 2;
+%                 major_ax = b-a;
+%                 len_major = obj.major_axis/simState.dist_scale;
+%                 len_minor =  obj.minor_axis/simState.dist_scale;
+%                 
+%                 v1 = [1 0];
+%                 v2 = [major_ax(1) major_ax(2)];
+%                 theta_z = rad2deg(acos(min(1,max(-1, v1(:).' * v2(:) / norm(v1) / norm(v2)))));
+%                 
+%                 v1 = [1 0];
+%                 v2 = [major_ax(1) major_ax(3)];
+%                 theta_y = rad2deg(acos(min(1,max(-1, v1(:).' * v2(:) / norm(v1) / norm(v2) ))));
+%                 
+%                 if a(2) < b(2)
+%                     theta_z = - theta_z;
+%                     theta_y = -theta_y;
+%                 end
+%                 
+%                 [x, y, z] = ellipsoid(c(1), c(2), c(3), len_major,len_minor,len_minor,20);
+%                 S = surfl(x, y, z);
+%                 
+%                 m1 = sin(deg2rad(-theta_y));
+%                 m2 = 0;
+%                 m3 = cos(deg2rad(-theta_y));
+%                 m11 = m1*cos(deg2rad(-theta_z)) - 0; %m2*..
+%                 m22 = m1*sin(deg2rad(-theta_z));
+%                 m33 = m3;
+%                 
+%                 r = cross([m11 m22 m33], major_ax);
+%                 m1 = cos(deg2rad(-theta_y));
+%                 m2 = 0;
+%                 m3 = -sin(deg2rad(-theta_y));
+%                 m11 = m1*cos(deg2rad(-theta_z)) - 0; %m2*..
+%                 m22 = m1*sin(deg2rad(-theta_z));
+%                 m33 = m3;
+%                 
+%                 mymax = [m11 m22 m33];
+%                 rot_angle = rad2deg(atan2(norm(cross(mymax, major_ax)), dot(mymax, major_ax)));
+%                 if a(1) > b(1)
+%                     rot_angle = - rot_angle;
+%                 end
+%                 if a(2) < b(2)
+%                     rot_angle = - rot_angle;
+%                 end
+%                 rotate(S, [0,1,0], -theta_y, c)
+%                 rotate(S, [0,0,1], -theta_z, c)
+%                 rotate(S, [1,0,0], rot_angle, c);
+%                 hold on;
+%                 
+%                 v=[a;b];
+%                 plot3(v(:,1),v(:,2),v(:,3),'r')
+                
+%                 
+                %fprintf("Distance between the source and the destination = %f\n", D*2);
+                %fprintf("Major axis length = %f\n", obj.major_axis);
+                %fprintf("Minor axis length = %f\n", obj.minor_axis);
+                
+                %
+                %             [x,y,z] = ellipsoid(p(1), p(2), p(3), obj.major_axis/simState.dist_scale, obj.minor_axis/simState.dist_scale, obj.minor_axis/simState.dist_scale);
+                %
+                %
+%                             p = (obj.sloc + obj.dloc)/2;
+%                 
+%                             xp = obj.dloc(1);
+%                             yp = obj.dloc(2);
+%                             zp = obj.dloc(3);
+%                 
+%                             xc = obj.sloc(1);
+%                             yc = obj.sloc(2);
+%                             zc = obj.sloc(3);
 % 
-% 
-%             p = (obj.sloc + obj.dloc)/2;
-% 
-%             xp = obj.dloc(1);
-%             yp = obj.dloc(2);
-%             zp = obj.dloc(3);
-%             
-%             xc = obj.sloc(1);
-%             yc = obj.sloc(2);
-%             zc = obj.sloc(3);
-% %             xc = p(1);
-% %             yc = p(2);
-% %             zc = p(3);
-% 
-% 
-%             gamma = atan(sqrt(((xp-xc)^2+(yp-yc)^2)/abs((zp-zc)))) * 180;
-%             alpha = atan(sqrt(((zp-zc)^2+(yp-yc)^2)/abs((xp-xc)))) * 180 ;
-%             beta = atan(sqrt(((xp-xc)^2+(zp-zc)^2)/abs((yp-yc)))) * 180;
-%             
-%             scatter3(p(1), p(2), p(3), 60, "+", 'Magenta');
-%             [x,y,z] = ellipsoid(p(1), p(2), p(3), obj.major_axis/simState.dist_scale, obj.minor_axis/simState.dist_scale, obj.minor_axis/simState.dist_scale);
-%             S = surf(x,y,z);
-%             rotate(S, [1,0,0], -alpha);
-%             rotate(S, [0,1,0], -beta);
-%             rotate(S, [0,0,1], -gamma);
+%                             gamma = rad2deg(atan(sqrt(((xp-xc)^2+(yp-yc)^2)/abs((zp-zc)))));
+%                             alpha = rad2deg(atan(sqrt(((zp-zc)^2+(yp-yc)^2)/abs((xp-xc))))) ;
+%                             beta = rad2deg(atan(sqrt(((xp-xc)^2+(zp-zc)^2)/abs((yp-yc)))));
+%                 
+%                             scatter3(p(1), p(2), p(3), 60, "+", 'Magenta');
+%                             [x,y,z] = ellipsoid(p(1), p(2), p(3), obj.major_axis/simState.dist_scale, obj.minor_axis/simState.dist_scale, obj.minor_axis/simState.dist_scale);
+%                             S = surf(x,y,z);
+%                             rotate(S, [1,0,0], -alpha, p);
+%                             rotate(S, [0,1,0], -beta, p);
+%                             rotate(S, [0,0,1], -gamma, p);
+                
             end
         end
     end

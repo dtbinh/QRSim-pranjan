@@ -1,4 +1,5 @@
 from uuid import uuid1 
+import numpy
 import pickle, socket, sys, time
 import matplotlib.pyplot as plt
 import pdb
@@ -28,9 +29,16 @@ def start_client(server_address):
         #pdb.set_trace()
         mydict[d.id].append(time.time())
     dffs = [t2-t1 for t1, t2 in mydict.values()]
-    pdb.set_trace()
+    mean = sum(dffs) / len(dffs)
+    std = numpy.std(dffs);
+    print("mean = {0}, std= {1}".format(mean, std))
+    plt.ylim(0, 0.02)
+    plt.xlabel("Iteration Number");
+    plt.ylabel("Round Trip Time - Seconds");
+    plt.text(600, 0.0175, "mean = {0:.5f}, std= {1:.5f}".format(mean, std))
     plt.plot(dffs, linewidth=0.1)
     plt.show(dffs)
+    pdb.set_trace()
     
 if __name__ == "__main__":
     if len(sys.argv) <= 1:

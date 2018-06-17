@@ -83,7 +83,7 @@ classdef TaskPlume_1<Task
             %ababujo:obstacles{Column - X Y Z(h) r}
             % taskparams.environment.area.obstacles = taskparams.environment.area.type.obstacles;
             taskparams.environment.area.obstacles = [ ];
-            taskparams.environment.area.plume = [10 10 25 19]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.
+            taskparams.environment.area.plume = [10 10 30 19]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.
             %taskparams.environment.area.plume = [10 40 25 13]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.            
             
             % GPS
@@ -158,7 +158,7 @@ classdef TaskPlume_1<Task
             y_max = 40;
             z_min = 5;
             z_max = 50;
-            seed = 1;
+            seed = int32(rand() * 10000);
             P = gallery('uniformdata', N, 3, seed);
             for drone=1:N
                 x = x_min + P(drone, 1) * (x_max - x_min);
@@ -213,6 +213,7 @@ classdef TaskPlume_1<Task
         
         
         function reset(obj)
+            number_of_pairs = 200;  
             formation_type = "random"; 
             switch formation_type
                 case "random"
@@ -220,6 +221,7 @@ classdef TaskPlume_1<Task
                 case "spherical"
                     obj.fixed_speherical();
                 otherwise
+                    number_of_pairs = 20;  
                     obj.mesh_formation();
             end
             N = obj.N4;
@@ -238,7 +240,6 @@ classdef TaskPlume_1<Task
             [~, idx] = unique(src_dst_pairs(:, 3));
             src_dst_pairs = src_dst_pairs(idx, :);
             src_dst_pairs = sortrows(src_dst_pairs, 3, 'descend');  
-            number_of_pairs = 3;
             obj.furthest_pairs = src_dst_pairs(1:number_of_pairs, :);
         end
   

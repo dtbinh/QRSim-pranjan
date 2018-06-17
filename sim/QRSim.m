@@ -235,7 +235,7 @@ classdef QRSim<handle
             end
             UTC = datetime(1970,1,1,0,0,0);
             success = 0;
-            tr_ct = 0;
+            tr_ct = 1;  % at least the source will transmit once.
             mark_pt_ct = 0;
             hop_count = 0;
             end_to_end_delay = datetime('now') - UTC;
@@ -263,7 +263,7 @@ classdef QRSim<handle
                                 mark_pt_ct = mark_pt_ct + 1;
                             end
                         else
-                            if r_msg.dest == 0  % this is a broadcast packet.
+                            if r_msg.dest == 0  % this is a geocast packet.
                                 XX = pdist([r_msg.dloc'; my_coord'], 'euclidean');
                                 if XX <= r_msg.radius   % The drone is inside the destination sphere.
                                     success = 1;
