@@ -13,6 +13,8 @@ addpath(['..',filesep,'controllers']);
 qrsim = QRSim();
 
 state = qrsim.init('TaskPlume_1');
+unicast = 0;
+evaluate_performance = 1;
 
 % reminder:
 % platforms in N1 -> no sensing features
@@ -30,9 +32,6 @@ traj_colors = ["black", "red", "blue", "yellow", "green", "cyan", "magenta"];
 for i = 1:N
     state.platforms{i}.setTrajectoryColor(traj_colors(mod(i, length(traj_colors))+1));
 end
-
-unicast = 1;
-evaluate_performance = 0;
 
 for i=1:state.task.durationInSteps
     tloop=tic;
@@ -58,14 +57,20 @@ for i=1:state.task.durationInSteps
         src_drone = 1;
         dest_drone = 36;
         
-%         for HTL = 1:6
+%         for HTL = 8:8
 %             ct = qrsim.app_unicast_flooding(src_drone, dest_drone, HTL, "no_data", 2, mark_points);
 %             if mark_points == 1; set_invisible_scatter_plots(ct+2);  end
 %         end
-        dloc = state.platforms{dest_drone}.getX(1:3);
-        petal_width = 40;
+        petal_width = 5;
         T_ub = 0.002;
         update_petal = 1;
+        radius = 0;
+        for boff_type = 1:3 % 1->random; 2-> coordinated; 3-> coordinated random
+            ct  = qrsim.app_unicast_petal_routing(src_drone, dest_drone, petal_width, "no_data", mark_points, update_petal, boff_type, T_ub, radius);
+            if mark_points == 1; set_invisible_scatter_plots(ct+2);  end
+        end
+
+        dloc = state.platforms{dest_drone}.getX(1:3);
         for radius=10:10:30
             for boff_type = 1:3 % 1->random; 2-> coordinated; 3-> coordinated random
 %                ct  = qrsim.app_unicast_petal_routing(src_drone, dest_drone, petal_width, "no_data", mark_points, update_petal, boff_type, T_ub, radius);
@@ -77,19 +82,32 @@ for i=1:state.task.durationInSteps
     
     if evaluate_performance == 1
         mark_points = 0;
-        update_petal = 0;
+
         pairs = state.task.furthest_pairs;
-        number_of_msgs = 10;
+        number_of_msgs = 3;
         
         type = "petal";  % options are "flooding" and "petal"
-        petal_sizes = 10:10:60;
-        results_petal = performace_evaluation(qrsim, state, type, pairs, petal_sizes, number_of_msgs, mark_points, update_petal);
-        plot_graph(results_petal, petal_sizes, pairs, "3D Petal Routing", type);
+        petal_sizes = 5:10:105;
+        boff_type = 20;
+        T_ub = 0.002;  % seconds
         
+        update_petal = 0;
+        results_petal = performace_evaluation(qrsim, state, type, pairs, petal_sizes, number_of_msgs, mark_points, update_petal, boff_type, T_ub);
+        %plot_graph(results_petal, petal_sizes, pairs, "3D Petal Routing", type);
+
+        update_petal = 1;
+        results_petal_1 = performace_evaluation(qrsim, state, type, pairs, petal_sizes, number_of_msgs, mark_points, update_petal, boff_type, T_ub);
+        %plot_graph(results_petal_1, petal_sizes, pairs, "3D Petal Routing", type);
+
         type = "flooding";
-        HTLs = 1:1:6;  % HTL array.
-        results_flooding = performace_evaluation(qrsim, state, type, pairs, HTLs, number_of_msgs, mark_points);
+        HTLs = 1:1:11;  % HTL array.
+        results_flooding = performace_evaluation(qrsim, state, type, pairs, HTLs, number_of_msgs, mark_points, T_ub);
         plot_graph(results_flooding, HTLs, pairs, "Limited Flooding", type);
+        
+        plot_combined_graph(results_petal, results_petal_1, results_flooding, petal_sizes, pairs, "3D petal routing");
+        
+        %qrsim.state.reset()
+        break;
     end
     
     
@@ -114,7 +132,7 @@ function set_invisible_scatter_plots(ct)
         end
 end
 
-function results = performace_evaluation(qrsim, state, type, pairs, arguments, number_of_msgs, mark_points, update_petal)
+function results = performace_evaluation(qrsim, state, type, pairs, arguments, number_of_msgs, mark_points, update_petal, boff_type, T_ub)
     results = zeros(length(arguments) * length(pairs(:, 1)), 8);
     res_idx = 1;
     fprintf("\n Evaluating type = %s\n", type);
@@ -126,11 +144,10 @@ function results = performace_evaluation(qrsim, state, type, pairs, arguments, n
         for arg = arguments
             success_count = 0;
             total_number_of_hops = 0;
-            total_transmissions = 0;
+            overhead_transmissions = 0;
             total_end_to_end_delay = 0;
             avg_end_to_end_delay = seconds(0);
             avg_number_hops = 0;
-            overhead = 0;
 
             for run_no = 1: number_of_msgs
                 switch type
@@ -140,12 +157,11 @@ function results = performace_evaluation(qrsim, state, type, pairs, arguments, n
                         [scat_ct, tr_ct, success, hop_count, end_to_end_delay] = qrsim.flood_packet(msg, src, mark_points);                    
                     otherwise
                         msg = geo_message(state, src, dest, arg, "no_data", mark_points, update_petal, 0); % arg will be petal width
-                        boff_type = 1;
-                        T_ub = 0.002;   % seconds.
+                        %boff_type % 1 is random, 2 is coordinated, 3 is coordinated random.
                         [scat_ct, tr_ct, success, hop_count, end_to_end_delay] = qrsim.petal_send_message(msg, src, mark_points, boff_type, T_ub);
                         minor_axis_to_dist_percentage = msg.minor_axis/msg.src_dst_dist * 100;
                 end
-                total_transmissions = total_transmissions + tr_ct;
+                overhead_transmissions = overhead_transmissions + tr_ct - hop_count;
                 success_count = success_count + success;
                 if success == 1
                     total_number_of_hops = total_number_of_hops + hop_count;
@@ -160,7 +176,9 @@ function results = performace_evaluation(qrsim, state, type, pairs, arguments, n
                 avg_number_hops = total_number_of_hops/success_count;
                 avg_end_to_end_delay = total_end_to_end_delay / success_count;
                 avg_end_to_end_delay.Format = 'hh:mm:ss.SSSSSSSSS';
-                overhead = total_transmissions / success_count; % Number of transmissions per successfully delivered packet. (includes unsuccessfull transmissions).
+                overhead = overhead_transmissions / success_count; % Number of transmissions per successfully delivered packet. (includes unsuccessfull transmissions).
+            else
+                overhead = overhead_transmissions;
             end
             results(res_idx, : ) = [src, dest, src_dst_dist, round(minor_axis_to_dist_percentage), success_rate, seconds(avg_end_to_end_delay), avg_number_hops, overhead];
             %delay_results(res_idx, :) = seconds(avg_end_to_end_delay);
@@ -172,6 +190,95 @@ function results = performace_evaluation(qrsim, state, type, pairs, arguments, n
     end
 end
 
+function plot_combined_graph(petal_results, petal_up_results, flooding_results, args, pairs, name)
+    x = args;
+    xlabel_text = "'Petal-width' to 'src-dst distance', '%'";
+    figure('Name', name, 'NumberTitle', 'off');
+
+    subplot(2,2,1);
+    dr1 = zeros(length(args), length(pairs(:, 1)));
+    dr2 = zeros(length(args), length(pairs(:, 1)));
+    dr3 = flooding_results(:, 5);
+    for i = 1: length(args)
+        dr1(i, :) = petal_results(i: length(args): length(petal_results(:, 1)), 5);
+        dr2(i, :) = petal_up_results(i: length(args): length(petal_up_results(:, 1)), 5);
+    end
+    
+    errorbar(x, mean(dr1,2), std(dr1,0,2), 'LineStyle', '--', 'DisplayName', "Don't update petal");
+    hold on;
+    errorbar(x, mean(dr2,2), std(dr2,0,2), 'LineStyle', '-', 'DisplayName', 'Update petal');
+    title("Delivery Rate");
+    xlabel(xlabel_text);
+    ylabel("Delivery Rate, '%'");
+    ylim([0 110]);
+    yticks(0:10:100)
+    xlim([0 inf])
+    xticks([0, x])
+    legend('Location','southeast');
+    grid on
+    
+    subplot(2,2,2);
+    delay = zeros(length(args), length(pairs(:, 1)));
+    delay_1 = zeros(length(args), length(pairs(:, 1)));
+    
+    for i = 1: length(args)
+        delay(i, :) = petal_results(i: length(args): length(petal_results(:, 1)), 6);
+        delay_1(i, :) = petal_up_results(i: length(args): length(petal_up_results(:, 1)), 6);
+    end
+    hold on;
+    errorbar(x, mean(delay,2), std(delay,0,2), 'LineStyle', '--', 'DisplayName', "Don't update petal");
+    errorbar(x, mean(delay_1,2), std(delay_1,0,2),'LineStyle', '-', 'DisplayName', "Update petal");
+    grid on
+    title("Average end to end delay");
+    xlabel(xlabel_text);
+    ylabel("Delay 'seconds'");
+    ylim([0 0.25]);
+    yticks(0:0.02:0.25);
+    xticks([0, x])
+    xlim([0 inf])
+    legend();
+    
+    subplot(2,2,3);
+    hops = zeros(length(args), length(pairs(:, 1)));
+    hops_1 = zeros(length(args), length(pairs(:, 1)));
+    for i = 1: length(args)
+        hops(i, :) = petal_results(i: length(args): length(petal_results(:, 1)), 7);
+        hops_1(i, :) = petal_up_results(i: length(args): length(petal_up_results(:, 1)), 7);
+    end
+    hold on;
+    errorbar(x, mean(hops,2), std(hops,0,2), 'LineStyle','--', 'DisplayName', "Don't update petal");
+    errorbar(x, mean(hops_1,2), std(hops_1,0,2), 'LineStyle', '-', 'DisplayName', "Update petal");
+    title("Average Number of hops");
+    xlabel(xlabel_text);
+    ylabel("Average Number of Hops");
+    ylim([0 15]);
+    yticks(0:1:15);
+    xticks([0, x])
+    xlim([0 inf])
+    legend();
+    grid on    
+    
+    subplot(2,2,4);
+    overhead = zeros(length(args), length(pairs(:, 1)));
+    overhead_1 = zeros(length(args), length(pairs(:, 1)));
+    
+    for i = 1: length(args)
+        overhead(i, :) = petal_results(i: length(args): length(petal_results(:, 1)), 8);
+        overhead_1(i, :) = petal_up_results(i: length(args): length(petal_up_results(:, 1)), 8);
+    end
+    hold on;
+    errorbar(x, mean(overhead,2), std(overhead,0,2),'LineStyle', '--', 'DisplayName', "Don't update header");
+    errorbar(x, mean(overhead_1,2), std(overhead_1,0,2), 'LineStyle', '-','DisplayName', 'Update header');
+    grid on
+    title("Average Number of Transmissions");
+    xlabel(xlabel_text);
+    ylabel("Average number of transmissions");
+    ylim([0 100]);
+    yticks(0:10:100);
+    xlim([0 inf])
+    xticks([0 x])
+    legend();
+end
 
 function plot_graph(results, args, pairs, name, type)
     x = args;
@@ -185,79 +292,70 @@ function plot_graph(results, args, pairs, name, type)
     subplot(2,2,1);
     y = zeros(length(args), length(pairs(:, 1)));
     for i = 1: length(args)
-        y(i, :) = results(i: length(args): length(results), 5);
+        y(i, :) = results(i: length(args): length(results(:, 1)), 5);
     end
-    %bar(x, y);
-    errorbar(x, mean(y,2), std(y,0,2), 'o');
-    title("Success rate");
+    errorbar(x, mean(y,2), std(y,0,2), 'LineStyle', '-', 'DisplayName', "Flooding");
+    title("Delivery Rate");
     xlabel(xlabel_text);
-    ylabel("Success rate, '%'");
+    ylabel("Delivery Rate, '%'");
+    ylim([0 110]);
     yticks(0:10:100)
     xlim([0 inf])
     xticks([0, x])
+    legend('Location','southeast');
     grid on
+
     
     subplot(2,2,2);
     y2 = zeros(length(args), length(pairs(:, 1)));
     for i = 1: length(args)
-        y2(i, :) = results(i: length(args): length(results), 6);
+        y2(i, :) = results(i: length(args): length(results(:, 1)), 6);
     end
     %bar(x, y2);
-    errorbar(x, mean(y2,2), std(y2,0,2), 'o');
+    errorbar(x, mean(y2,2), std(y2,0,2), 'LineStyle', '-', 'DisplayName', "Flooding");
     grid on
     title("Average end to end delay");
     xlabel(xlabel_text);
     ylabel("Delay 'seconds'");
-    ylim([0 0.3]);
+    ylim([0 0.25]);
     yticks(0:0.02:0.25);
     xticks([0, x])
     xlim([0 inf])
-    text(-1, 0.28, "\approx", 'Fontsize', 20);
-%     for i=1:length(y2)
-%         if y2(i) == 0
-%             text(x(i)-1, 0.04, "\infty", 'Fontsize', 20)
-%         end
-%     end
-    
+    legend();
     
     subplot(2,2,3);
     y3 = zeros(length(args), length(pairs(:, 1)));
     for i = 1: length(args)
-        y3(i, :) = results(i: length(args): length(results), 7);
+        y3(i, :) = results(i: length(args): length(results(:, 1)), 7);
     end
     %bar(x, y3);
-    errorbar(x, mean(y3,2), std(y3,0,2), 'o');
+    errorbar(x, mean(y3,2), std(y3,0,2), 'LineStyle', '-', 'DisplayName', "Flooding");
 
-    grid on
     title("Average Number of hops");
     xlabel(xlabel_text);
     ylabel("Average Number of Hops");
-    ylim([0 20]);
+    ylim([0 15]);
     yticks(0:1:15);
     xticks([0, x])
     xlim([0 inf])
-    text(-1, 18, "\approx", 'Fontsize', 20);
-%     for i = 1:length(y3)
-%         if y3(i) == 0
-%             text(x(i)-1, 2, "\infty", 'Fontsize', 20);
-%         end
-%     end
-    
+    legend();
+    grid on  
+%     text(-1, 18, "\approx", 'Fontsize', 20);
     
     subplot(2,2,4);
     y4 = zeros(length(args), length(pairs(:, 1)));
     for i = 1: length(args)
-        y4(i, :) = results(i: length(args): length(results), 8);
+        y4(i, :) = results(i: length(args): length(results(:, 1)), 8);
     end
-    %bar(x, y4);
-    errorbar(x, mean(y4,2), std(y4,0,2), 'o');
+    errorbar(x, mean(y4,2), std(y4,0,2), 'LineStyle', '-', 'DisplayName', "Flooding");
 
     grid on
-    title("Overhead");
+    title("Average Number of Transmissions");
     xlabel(xlabel_text);
-    ylabel("Overhead %");
+    ylabel("Average number of transmissions");
     ylim([0 100]);
     yticks(0:10:100);
     xlim([0 inf])
     xticks([0 x])
+    legend();
 end
