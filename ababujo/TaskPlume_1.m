@@ -37,6 +37,8 @@ classdef TaskPlume_1<Task
         time =0;
         vt; % to store target velocities
         furthest_pairs;     % pranjan:
+        formation_type = "random"; 
+        number_of_pairs = 1;  
     end
     
     methods (Sealed,Access=public)
@@ -60,7 +62,7 @@ classdef TaskPlume_1<Task
             
             %%%%% visualization %%%%%
             % 3D display parameters
-            taskparams.display3d.on = 1;
+            taskparams.display3d.on = 0;
             taskparams.display3d.width = 1000;
             taskparams.display3d.height = 600;
             
@@ -213,15 +215,13 @@ classdef TaskPlume_1<Task
         
         
         function reset(obj)
-            number_of_pairs = 200;  
-            formation_type = "random"; 
-            switch formation_type
+            switch obj.formation_type
                 case "random"
                     obj.uniform_random_formation();
                 case "spherical"
                     obj.fixed_speherical();
                 otherwise
-                    number_of_pairs = 20;  
+                    obj.number_of_pairs = min(20, obj.number_of_pairs);  
                     obj.mesh_formation();
             end
             N = obj.N4;
@@ -237,10 +237,10 @@ classdef TaskPlume_1<Task
                     src_dst_pairs(idx, :) = [i, j, m_dst];
                 end
             end
-            [~, idx] = unique(src_dst_pairs(:, 3));
-            src_dst_pairs = src_dst_pairs(idx, :);
+%             [~, idx] = unique(src_dst_pairs(:, 3));
+%             src_dst_pairs = src_dst_pairs(idx, :);
             src_dst_pairs = sortrows(src_dst_pairs, 3, 'descend');  
-            obj.furthest_pairs = src_dst_pairs(1:number_of_pairs, :);
+            obj.furthest_pairs = src_dst_pairs(1:obj.number_of_pairs, :);
         end
   
 

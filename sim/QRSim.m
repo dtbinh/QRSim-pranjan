@@ -222,7 +222,7 @@ classdef QRSim<handle
     
     methods (Access=public)
         
-        function [mark_pt_ct, tr_ct, success, hop_count, end_to_end_delay] = petal_send_message(obj, msg, transmitter, mark_points, boff_type, T_ub)
+        function [mark_pt_ct, tr_ct, success, hop_count, end_to_end_delay, redundancy_count] = petal_send_message(obj, msg, transmitter, mark_points, boff_type, T_ub)
             % Returns: scat_ct : number of nodes involved by this message
             %                    transmission. (Either transmitted or received)
             %  tr_ct: Number of retransmissions of this message.
@@ -234,6 +234,7 @@ classdef QRSim<handle
                 return
             end
             UTC = datetime(1970,1,1,0,0,0);
+            redundancy_count = 0;
             success = 0;
             tr_ct = 1;  % at least the source will transmit once.
             mark_pt_ct = 0;
@@ -256,6 +257,7 @@ classdef QRSim<handle
                             %fprintf("Drone %d received the message %s", drone, msg.id);
                             success = 1;
                             hop_count = r_msg.hop_count;
+                            redundancy_count = redundancy_count + 1;
                             end_to_end_delay = datetime('now') - r_msg.timestamp;
                             if mark_points == 1
                                 %line([r_msg.tloc(1), my_coord(1)], [r_msg.tloc(2), my_coord(2)], [r_msg.tloc(3), my_coord(3)], 'Color','red');
@@ -267,6 +269,7 @@ classdef QRSim<handle
                                 XX = pdist([r_msg.dloc'; my_coord'], 'euclidean');
                                 if XX <= r_msg.radius   % The drone is inside the destination sphere.
                                     success = 1;
+                                    redundancy_count = redundancy_count + 1;
                                     hop_count = r_msg.hop_count;
                                     end_to_end_delay = datetime('now') - r_msg.timestamp;
                                     if mark_points == 1
@@ -333,7 +336,7 @@ classdef QRSim<handle
         end
         
         
-        function [scat_ct, tr_ct, success, hop_count, end_to_end_delay] = flood_packet(obj, msg, transmitter, mark_points)
+        function [scat_ct, tr_ct, success, hop_count, end_to_end_delay, redundancy_count] = flood_packet(obj, msg, transmitter, mark_points)
             if obj.simState.platforms{transmitter}.isValid() == false
                 fprintf("\n Drone %d state not valid", transmitter);
                 return
@@ -349,7 +352,7 @@ classdef QRSim<handle
             for dest=1:obj.simState.task.N4
                 obj.simState.platforms{transmitter}.send_one_hop_message(msg, transmitter, dest, T_ub, boff_type);
             end
-            
+            redundancy_count = 0;
             done = 0;
             while done == 0
                 done = 1;
@@ -358,9 +361,11 @@ classdef QRSim<handle
                         r_msg = obj.simState.platforms{drone}.messages(msg.id);
                         if drone == msg.dest
                             success = 1;
+                            redundancy_count = redundancy_count + 1;
                             hop_count = r_msg.hop_count;
-                            end_to_end_delay = datetime('now') - r_msg.timestamp;
-                            
+                            if redundancy_count == 1
+                                end_to_end_delay = datetime('now') - r_msg.timestamp;
+                            end
                         elseif r_msg.HTL > 0
                             done = done && 0;
                             r_msg.hop_count = r_msg.hop_count + 1;
@@ -381,6 +386,7 @@ classdef QRSim<handle
                     end
                 end
             end
+            fprintf("\none = %d\n",redundancy_count);
         end
         
         function scat_ct = app_unicast_flooding(obj, src, dest, HTL, data, type, mark_points)
