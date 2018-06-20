@@ -386,7 +386,7 @@ classdef QRSim<handle
                     end
                 end
             end
-            fprintf("\none = %d\n",redundancy_count);
+%            fprintf("\none = %d\n",redundancy_count);
         end
         
         function scat_ct = app_unicast_flooding(obj, src, dest, HTL, data, type, mark_points)
