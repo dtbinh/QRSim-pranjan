@@ -1,7 +1,7 @@
 clear all;
-pairs_ct = 2;
-msgs_ct = 2;
-iterations_ct = 3;
+pairs_ct = 1;
+msgs_ct = 1;
+iterations_ct = 1;
 formation = "random";
 HTLs = 1:1:11;
 petal_sizes = 5:10:105;
@@ -11,7 +11,7 @@ res_flooding = csvread(sprintf("%s_Flood_%d-Pair_%d-Msg_%d-iters.csv", formation
 res_petal = csvread(sprintf("%s_petal_%d-Pair_%d-Msg_%d-iters.csv",formation, pairs_ct, msgs_ct, iterations_ct));
 res_petal_1 = csvread(sprintf("%s_petal_upd_%d-Pair_%d-Msg_%d-iters.csv", formation, pairs_ct, msgs_ct, iterations_ct));
 
-%plot_graph_flooding(res_flooding, HTLs, pairs_ct, iterations_ct, "Flooding");
+plot_graph_flooding(res_flooding, HTLs, pairs_ct, iterations_ct, "Flooding");
 plot_graph_petals(res_petal, res_petal_1, petal_sizes, pairs_ct, iterations_ct, "3D petal routing");
 
 function plot_graph_petals(petal_results, petal_up_results, petal_sizes, pair_ct, iterations_ct, name)

@@ -108,8 +108,8 @@ for i=1:state.task.durationInSteps
     if evaluate_performance == 1
         
         mark_points = 0;
-        number_of_iterations = 3;
-        number_of_msgs = 2;
+        number_of_iterations = 10;
+        number_of_msgs = 50;
         petal_sizes = 5:10:105;
         HTLs = 1:1:11;  % HTL array.  Make sure the length of petal_sizes and HTLs is equal.
 
@@ -120,7 +120,7 @@ for i=1:state.task.durationInSteps
         results_petal = zeros(number_of_rows * number_of_iterations, 10);
         results_petal_1 = zeros(number_of_rows * number_of_iterations, 10);
         results_flooding = zeros(number_of_rows * number_of_iterations, 10);
-        
+        fprintf("Iter ct= %d, msgCt = %d, formation= %s, pair_ct= %d", number_of_iterations, number_of_msgs, state.task.formation_type, state.task.number_of_pairs);
         for iter_ct = 1:number_of_iterations
             pairs = state.task.furthest_pairs;
             idx_start = (iter_ct - 1) * number_of_rows ;
