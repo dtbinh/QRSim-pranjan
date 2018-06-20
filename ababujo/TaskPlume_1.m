@@ -38,7 +38,7 @@ classdef TaskPlume_1<Task
         vt; % to store target velocities
         furthest_pairs;     % pranjan:
         formation_type = "random"; 
-        number_of_pairs = 20;  
+        number_of_pairs = 10;  
     end
     
     methods (Sealed,Access=public)

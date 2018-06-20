@@ -108,32 +108,43 @@ for i=1:state.task.durationInSteps
     if evaluate_performance == 1
         
         mark_points = 0;
-        
-        pairs = state.task.furthest_pairs;
-        number_of_msgs = 100;
-        
-        type = "petal";  % options are "flooding" and "petal"
+        number_of_iterations = 3;
+        number_of_msgs = 2;
         petal_sizes = 5:10:105;
+        HTLs = 1:1:11;  % HTL array.  Make sure the length of petal_sizes and HTLs is equal.
+
         boff_type = 3;
         T_ub = 0.002;  % seconds
+        number_of_rows = length(petal_sizes) * state.task.number_of_pairs;
         
-        update_petal = 0;
-        results_petal = performace_evaluation(qrsim, state, type, pairs, petal_sizes, number_of_msgs, mark_points, update_petal, boff_type, T_ub);
+        results_petal = zeros(number_of_rows * number_of_iterations, 10);
+        results_petal_1 = zeros(number_of_rows * number_of_iterations, 10);
+        results_flooding = zeros(number_of_rows * number_of_iterations, 10);
         
-        update_petal = 1;
-        results_petal_1 = performace_evaluation(qrsim, state, type, pairs, petal_sizes, number_of_msgs, mark_points, update_petal, boff_type, T_ub);
+        for iter_ct = 1:number_of_iterations
+            pairs = state.task.furthest_pairs;
+            idx_start = (iter_ct - 1) * number_of_rows ;
+            
+            type = "petal";  % options are "flooding" and "petal"
+            update_petal = 0;
+            r = performace_evaluation(qrsim, state, type, pairs, petal_sizes, number_of_msgs, mark_points, update_petal, boff_type, T_ub);
+            
+            results_petal(idx_start+1: idx_start + number_of_rows, :)= r;
+            
+            update_petal = 1;
+            r1 = performace_evaluation(qrsim, state, type, pairs, petal_sizes, number_of_msgs, mark_points, update_petal, boff_type, T_ub);
+            results_petal_1(idx_start+1: idx_start + number_of_rows, :)= r1;
+            
+            type = "flooding";
+            rf = performace_evaluation(qrsim, state, type, pairs, HTLs, number_of_msgs, mark_points, T_ub);
+            results_flooding(idx_start+1: idx_start + number_of_rows, :)= rf;            
+            state.task.reset()
+        end
         
-        type = "flooding";
-        HTLs = 1:1:11;  % HTL array.
-        results_flooding = performace_evaluation(qrsim, state, type, pairs, HTLs, number_of_msgs, mark_points, T_ub);
-        plot_graph_flooding(results_flooding, HTLs, pairs, "Flooding");
+        csvwrite(sprintf("%s_Flood_%d-Pair_%d-Msg_%d-iters.csv", state.task.formation_type, length(pairs(:, 1)), number_of_msgs, number_of_iterations), results_flooding);
+        csvwrite(sprintf("%s_petal_%d-Pair_%d-Msg_%d-iters.csv", state.task.formation_type, length(pairs(:, 1)), number_of_msgs, number_of_iterations), results_petal);
+        csvwrite(sprintf("%s_petal_upd_%d-Pair_%d-Msg_%d-iters.csv", state.task.formation_type, length(pairs(:, 1)), number_of_msgs, number_of_iterations), results_petal_1);
         
-        plot_combined_graph(results_petal, results_petal_1, results_flooding, petal_sizes, pairs, "3D petal routing");
-        
-        %qrsim.state.reset()
-        csvwrite(sprintf("Flood_%s_%dPair_%dMsg.csv", state.task.formation_type, length(pairs(:, 1)), number_of_msgs), results_flooding);
-        csvwrite(sprintf("petal_%s_%dPair_%dMsg.csv", state.task.formation_type, length(pairs(:, 1)), number_of_msgs), results_petal);
-        csvwrite(sprintf("petal_1_mesh_10Pair_100Msg.csv", state.task.formation_type, length(pairs(:, 1)), number_of_msgs), results_petal_1);
         break;
     end
     
@@ -227,173 +238,4 @@ for idx = 1:length(pairs(:, 1))
         fprintf(" Avg end-to-end delay = %f, Avg number of hops= %f, Overhead= %f, Redundancy= %d", seconds(avg_end_to_end_delay), avg_number_hops, overhead, avg_redundant);
     end
 end
-end
-
-function plot_combined_graph(petal_results, petal_up_results, ~, args, pairs, name)
-x = args;
-xlabel_text = "'Petal-width' to 'src-dst distance', '%'";
-figure('Name', name, 'NumberTitle', 'off');
-
-subplot(2,2,1);
-dr1 = zeros(length(args), length(pairs(:, 1)));
-dr2 = zeros(length(args), length(pairs(:, 1)));
-for i = 1: length(args)
-    dr1(i, :) = petal_results(i: length(args): length(petal_results(:, 1)), 5);
-    dr2(i, :) = petal_up_results(i: length(args): length(petal_up_results(:, 1)), 5);
-end
-
-errorbar(x, mean(dr1,2), std(dr1,0,2), 'LineStyle', '--', 'DisplayName', "Don't update petal");
-hold on;
-errorbar(x, mean(dr2,2), std(dr2,0,2), 'LineStyle', '-', 'DisplayName', 'Update petal');
-title("Delivery Rate");
-xlabel(xlabel_text);
-ylabel("Delivery Rate, '%'");
-ylim([0 110]);
-yticks(0:10:100)
-xlim([0 inf])
-xticks([0, x])
-legend('Location','southeast');
-grid on
-
-subplot(2,2,2);
-delay = zeros(length(args), length(pairs(:, 1)));
-delay_1 = zeros(length(args), length(pairs(:, 1)));
-
-for i = 1: length(args)
-    delay(i, :) = petal_results(i: length(args): length(petal_results(:, 1)), 6);
-    delay_1(i, :) = petal_up_results(i: length(args): length(petal_up_results(:, 1)), 6);
-end
-hold on;
-errorbar(x, mean(delay,2), std(delay,0,2), 'LineStyle', '--', 'DisplayName', "Don't update petal");
-errorbar(x, mean(delay_1,2), std(delay_1,0,2),'LineStyle', '-', 'DisplayName', "Update petal");
-grid on
-title("Average end to end delay");
-xlabel(xlabel_text);
-ylabel("Delay 'seconds'");
-ylim([0 0.25]);
-yticks(0:0.02:0.25);
-xticks([0, x])
-xlim([0 inf])
-legend();
-
-subplot(2,2,3);
-hops = zeros(length(args), length(pairs(:, 1)));
-hops_1 = zeros(length(args), length(pairs(:, 1)));
-for i = 1: length(args)
-    hops(i, :) = petal_results(i: length(args): length(petal_results(:, 1)), 7);
-    hops_1(i, :) = petal_up_results(i: length(args): length(petal_up_results(:, 1)), 7);
-end
-hold on;
-errorbar(x, mean(hops,2), std(hops,0,2), 'LineStyle','--', 'DisplayName', "Don't update petal");
-errorbar(x, mean(hops_1,2), std(hops_1,0,2), 'LineStyle', '-', 'DisplayName', "Update petal");
-title("Average Number of hops");
-xlabel(xlabel_text);
-ylabel("Average Number of Hops");
-ylim([0 15]);
-yticks(0:1:15);
-xticks([0, x])
-xlim([0 inf])
-legend();
-grid on
-
-subplot(2,2,4);
-overhead = zeros(length(args), length(pairs(:, 1)));
-overhead_1 = zeros(length(args), length(pairs(:, 1)));
-
-for i = 1: length(args)
-    overhead(i, :) = petal_results(i: length(args): length(petal_results(:, 1)), 8);
-    overhead_1(i, :) = petal_up_results(i: length(args): length(petal_up_results(:, 1)), 8);
-end
-hold on;
-errorbar(x, mean(overhead,2), std(overhead,0,2),'LineStyle', '--', 'DisplayName', "Don't update header");
-errorbar(x, mean(overhead_1,2), std(overhead_1,0,2), 'LineStyle', '-','DisplayName', 'Update header');
-grid on
-title("Average Number of Transmissions");
-xlabel(xlabel_text);
-ylabel("Average number of transmissions");
-ylim([0 100]);
-yticks(0:10:100);
-xlim([0 inf])
-xticks([0 x])
-legend();
-end
-
-function plot_graph_flooding(results, args, pairs, name)
-x = args;
-figure('Name', name, 'NumberTitle','off');
-xlabel_text = "HTL";
-
-subplot(2,2,1);
-y = zeros(length(args), length(pairs(:, 1)));
-for i = 1: length(args)
-    y(i, :) = results(i: length(args): length(results(:, 1)), 5);
-end
-errorbar(x, mean(y,2), std(y,0,2), 'LineStyle', '-', 'DisplayName', "Flooding");
-title("Delivery Rate");
-xlabel(xlabel_text);
-ylabel("Delivery Rate, '%'");
-ylim([0 110]);
-yticks(0:10:100)
-xlim([0 inf])
-xticks([0, x])
-legend('Location','southeast');
-grid on
-
-
-subplot(2,2,2);
-y1 = zeros(length(args), length(pairs(:, 1)));
-y2 = zeros(length(args), length(pairs(:, 1)));
-for i = 1: length(args)
-    y1(i, :) = results(i: length(args): length(results(:, 1)), 9);
-    y2(i, :) = results(i: length(args): length(results(:, 1)), 6);
-end
-%bar(x, y2);
-hold on;
-errorbar(x, mean(y2,2), std(y2,0,2), 'LineStyle', '-', 'DisplayName', "End-to-end Delay");
-errorbar(x, mean(y1,2), std(y1,0,2), 'LineStyle', '--', 'DisplayName', "Total-flooding-time");
-grid on
-title("Average end to end delay");
-xlabel(xlabel_text);
-ylabel("Delay 'seconds'");
-% ylim([0 0.25]);
-% yticks(0:0.02:0.25);
-xticks([0, x])
-xlim([0 inf])
-legend();
-
-subplot(2,2,3);
-y3 = zeros(length(args), length(pairs(:, 1)));
-for i = 1: length(args)
-    y3(i, :) = results(i: length(args): length(results(:, 1)), 7);
-end
-%bar(x, y3);
-errorbar(x, mean(y3,2), std(y3,0,2), 'LineStyle', '-', 'DisplayName', "Flooding");
-
-title("Average Number of hops");
-xlabel(xlabel_text);
-ylabel("Average Number of Hops");
-ylim([0 15]);
-yticks(0:1:15);
-xticks([0, x])
-xlim([0 inf])
-legend();
-grid on
-%     text(-1, 18, "\approx", 'Fontsize', 20);
-
-subplot(2,2,4);
-y4 = zeros(length(args), length(pairs(:, 1)));
-for i = 1: length(args)
-    y4(i, :) = results(i: length(args): length(results(:, 1)), 8);
-end
-errorbar(x, mean(y4,2), std(y4,0,2), 'LineStyle', '-', 'DisplayName', "Flooding");
-
-grid on
-title("Average Number of Transmissions");
-xlabel(xlabel_text);
-ylabel("Average number of transmissions");
-% ylim([0 100]);
-% yticks(0:10:100);
-xlim([0 inf])
-xticks([0 x])
-legend();
 end
