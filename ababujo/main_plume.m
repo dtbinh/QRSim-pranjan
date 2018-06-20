@@ -106,13 +106,11 @@ for i=1:state.task.durationInSteps
     end
     
     if evaluate_performance == 1
-        state.task.formation_type = "mesh"; % random, spherical, mesh
-        state.task.number_of_pairs = 1;  
-
+        
         mark_points = 0;
         
         pairs = state.task.furthest_pairs;
-        number_of_msgs = 1;
+        number_of_msgs = 100;
         
         type = "petal";  % options are "flooding" and "petal"
         petal_sizes = 5:10:105;
@@ -226,7 +224,7 @@ for idx = 1:length(pairs(:, 1))
         res_idx = res_idx + 1;
         fprintf("\nS= %d, D= %d, Dist= %f, Petal width ratio= %f, Transmitted pkt ct= %d, Success Rate = %f",...
             src, dest, src_dst_dist, minor_axis_to_dist_percentage, number_of_msgs, success_rate);
-        fprintf(" Avg end-to-end delay = %f, Avg number of hops= %f, Overhead= %f", seconds(avg_end_to_end_delay), avg_number_hops, overhead);
+        fprintf(" Avg end-to-end delay = %f, Avg number of hops= %f, Overhead= %f, Redundancy= %d", seconds(avg_end_to_end_delay), avg_number_hops, overhead, avg_redundant);
     end
 end
 end
