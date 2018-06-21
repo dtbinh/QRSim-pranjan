@@ -1,15 +1,18 @@
 clear all;
-pairs_ct = 1;
-msgs_ct = 1;
+formation = "spherical"; % random spherical
+pairs_ct = 3;
+msgs_ct = 100;
 iterations_ct = 1;
-formation = "random";
 HTLs = 1:1:11;
 petal_sizes = 5:10:105;
 % Make sure that the above variables match from main_plume
+flo = sprintf("%s_Flood_%d-Pair_%d-Msg_%d-iters.csv", formation, pairs_ct, msgs_ct, iterations_ct);
 
-res_flooding = csvread(sprintf("%s_Flood_%d-Pair_%d-Msg_%d-iters.csv", formation, pairs_ct, msgs_ct, iterations_ct));
-res_petal = csvread(sprintf("%s_petal_%d-Pair_%d-Msg_%d-iters.csv",formation, pairs_ct, msgs_ct, iterations_ct));
-res_petal_1 = csvread(sprintf("%s_petal_upd_%d-Pair_%d-Msg_%d-iters.csv", formation, pairs_ct, msgs_ct, iterations_ct));
+res_flooding = csvread(flo);
+pe = sprintf("%s_petal_%d-Pair_%d-Msg_%d-iters.csv",formation, pairs_ct, msgs_ct, iterations_ct);
+res_petal = csvread(pe);
+pe1 = sprintf("%s_petal_upd_%d-Pair_%d-Msg_%d-iters.csv", formation, pairs_ct, msgs_ct, iterations_ct);
+res_petal_1 = csvread(pe1);
 
 plot_graph_flooding(res_flooding, HTLs, pairs_ct, iterations_ct, "Flooding");
 plot_graph_petals(res_petal, res_petal_1, petal_sizes, pairs_ct, iterations_ct, "3D petal routing");
