@@ -240,6 +240,11 @@ classdef QRSim<handle
             mark_pt_ct = 0;
             hop_count = 0;
             end_to_end_delay = datetime('now') - UTC;
+            if mark_points == 1
+                draw_spheroid(msg.tloc', msg.dloc', msg.minor_axis/(2 * obj.simState.dist_scale));
+                mark_pt_ct = mark_pt_ct + 1;
+            end
+
             for dest= 1: obj.simState.task.N4
                 obj.simState.platforms{transmitter}.send_one_hop_message(msg, transmitter, dest, T_ub, boff_type);
             end
@@ -282,7 +287,7 @@ classdef QRSim<handle
                             x1 = pdist([r_msg.tloc'; my_coord'], 'euclidean');
                             x2 = pdist([r_msg.dloc'; my_coord'], 'euclidean');
                             X = (x1 + x2) * obj.simState.dist_scale;
-                            if X <= (2 * r_msg.major_axis)  % if this drone is in the prolate spheroid
+                            if X <= (2 * r_msg.major_axis)  % if this drone is in the spheroid
                                 done = done && 0;
                                 t = datetime('now');
                                 if ~isbetween(t, UTC, r_msg.boff_time)
@@ -294,6 +299,9 @@ classdef QRSim<handle
                                         % Centroid is further than self.
                                         % hence transmit.
                                         r_msg.hop_count = r_msg.hop_count + 1;
+                                        if r_msg.can_update == 1 && mark_points == 1 && norm(r_msg.sloc - r_msg.tloc) > 0
+                                            draw_spheroid(r_msg.tloc', r_msg.dloc', r_msg.minor_axis/(2 * obj.simState.dist_scale));
+                                        end
                                         for dest= 1:obj.simState.task.N4
                                             obj.simState.platforms{drone}.send_one_hop_message(r_msg, drone, dest, T_ub, boff_type);
                                         end
