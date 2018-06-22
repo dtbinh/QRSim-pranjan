@@ -57,22 +57,24 @@ for i=1:state.task.durationInSteps
     
     if unicast == 1
         mark_points = 1;
-        src_drone = 1;
-        dest_drone = 36;
+        pairs = state.task.furthest_pairs;
+        src_drone = pairs(1,1);
+        dest_drone = pairs(1,2);
         
         %         for HTL = 8:8
         %             ct = qrsim.app_unicast_flooding(src_drone, dest_drone, HTL, "no_data", 2, mark_points);
         %             if mark_points == 1; set_invisible_scatter_plots(ct+2);  end
         %         end
-        petal_width = 5;
+        petal_width = 15;
+        min_petal_wid = 0.1;
         T_ub = 0.002;
-        update_petal = 1;
+        update_petal = 0;
         radius = 0;
-        for boff_type = 1:3 % 1->random; 2-> coordinated; 3-> coordinated random
-            ct  = qrsim.app_unicast_petal_routing(src_drone, dest_drone, petal_width, "no_data", mark_points, update_petal, boff_type, T_ub, radius);
+        for boff_type = 1:1:1 % 1->random; 2-> coordinated; 3-> coordinated random
+            ct  = qrsim.app_unicast_petal_routing(src_drone, dest_drone, petal_width, "no_data", mark_points, update_petal, boff_type, T_ub, radius, min_petal_wid);
             if mark_points == 1; set_invisible_scatter_plots(ct+2);  end
         end
-        
+        break;
         dloc = state.platforms{dest_drone}.getX(1:3);
         for radius=10:10:30
             for boff_type = 1:3 % 1->random; 2-> coordinated; 3-> coordinated random
@@ -81,6 +83,7 @@ for i=1:state.task.durationInSteps
                 if mark_points == 1; set_invisible_scatter_plots(ct+2);  end
             end
         end
+        break;
     end
     
     if eval_network_density == 1
@@ -108,9 +111,10 @@ for i=1:state.task.durationInSteps
     if evaluate_performance == 1
         
         mark_points = 0;
-        number_of_iterations = 10;
-        number_of_msgs = 50;
+        number_of_iterations = 1;
+        number_of_msgs = 10;
         petal_sizes = 5:10:105;
+        min_petal_wid = 0.001;
         HTLs = 1:1:11;  % HTL array.  Make sure the length of petal_sizes and HTLs is equal.
 
         boff_type = 3;
@@ -122,21 +126,22 @@ for i=1:state.task.durationInSteps
         results_flooding = zeros(number_of_rows * number_of_iterations, 10);
         fprintf("Iter ct= %d, msgCt = %d, formation= %s, pair_ct= %d", number_of_iterations, number_of_msgs, state.task.formation_type, state.task.number_of_pairs);
         for iter_ct = 1:number_of_iterations
+            fprintf("\n Iteration Number %d", iter_ct);
             pairs = state.task.furthest_pairs;
             idx_start = (iter_ct - 1) * number_of_rows ;
             
             type = "petal";  % options are "flooding" and "petal"
             update_petal = 0;
-            r = performace_evaluation(qrsim, state, type, pairs, petal_sizes, number_of_msgs, mark_points, update_petal, boff_type, T_ub);
+            r = performace_evaluation(qrsim, state, type, pairs, petal_sizes, number_of_msgs, mark_points, update_petal, boff_type, T_ub, min_petal_wid);
             
             results_petal(idx_start+1: idx_start + number_of_rows, :)= r;
             
             update_petal = 1;
-            r1 = performace_evaluation(qrsim, state, type, pairs, petal_sizes, number_of_msgs, mark_points, update_petal, boff_type, T_ub);
+            r1 = performace_evaluation(qrsim, state, type, pairs, petal_sizes, number_of_msgs, mark_points, update_petal, boff_type, T_ub, min_petal_wid);
             results_petal_1(idx_start+1: idx_start + number_of_rows, :)= r1;
             
             type = "flooding";
-            rf = performace_evaluation(qrsim, state, type, pairs, HTLs, number_of_msgs, mark_points, T_ub);
+            rf = performace_evaluation(qrsim, state, type, pairs, HTLs, number_of_msgs, mark_points, T_ub, min_petal_wid);
             results_flooding(idx_start+1: idx_start + number_of_rows, :)= rf;            
             state.task.reset()
         end
@@ -168,10 +173,10 @@ for plot_points = 1:(ct)
 end
 end
 
-function results = performace_evaluation(qrsim, state, type, pairs, arguments, number_of_msgs, mark_points, update_petal, boff_type, T_ub)
+function results = performace_evaluation(qrsim, state, type, pairs, arguments, number_of_msgs, mark_points, update_petal, boff_type, T_ub, min_petal_wid)
 results = zeros(length(arguments) * length(pairs(:, 1)), 10);
 res_idx = 1;
-fprintf("\n Evaluating type = %s\n", type);
+fprintf("\nEvaluating type = %s\n", type);
 for idx = 1:length(pairs(:, 1))
     src = pairs(idx, 1);
     dest = pairs(idx, 2);
@@ -199,7 +204,7 @@ for idx = 1:length(pairs(:, 1))
                     tot_delay = datetime('now') - time_now;
                     
                 otherwise
-                    msg = geo_message(state, src, dest, arg, "no_data", mark_points, update_petal, 0); % arg will be petal width
+                    msg = geo_message(state, src, dest, arg, "no_data", mark_points, update_petal, 0, min_petal_wid); % arg will be petal width
                     %boff_type % 1 is random, 2 is coordinated, 3 is coordinated random.
                     [scat_ct, tr_ct, success, hop_count, end_to_end_delay, redundant] = qrsim.petal_send_message(msg, src, mark_points, boff_type, T_ub);
                     minor_axis_to_dist_percentage = msg.minor_axis/msg.src_dst_dist * 100;

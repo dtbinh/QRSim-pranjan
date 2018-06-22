@@ -444,10 +444,11 @@ classdef Pelican<Steppable & Platform
                     end
                     if msg.can_update == 1 && msg.src ~= transmitter
                         msg.tloc = obj.simState.platforms{transmitter}.getX(1:3);
-                        D = pdist([msg.tloc'; msg.dloc'], 'euclidean') * obj.simState.dist_scale/2;
-                        petal_width = msg.petal_width_percent * D / 100;
-                        msg.minor_axis = petal_width;
-                        msg.major_axis = sqrt(power(D,2) + power(petal_width, 2));
+                        tra_dest_dist = norm(msg.tloc - msg.dloc) * obj.simState.dist_scale;
+                        petal_width = msg.petal_width_percent * tra_dest_dist / 100;
+                        msg.minor_axis = max(petal_width, msg.min_width);
+                        D = tra_dest_dist / 2;
+                        msg.major_axis = sqrt(power(D,2) + power(msg.minor_axis, 2));
                     end
                     obj.simState.platforms{dest}.messages(msg.id) = msg;
                 end

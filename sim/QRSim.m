@@ -271,7 +271,7 @@ classdef QRSim<handle
                             end
                         else
                             if r_msg.dest == 0  % this is a geocast packet.
-                                XX = pdist([r_msg.dloc'; my_coord'], 'euclidean');
+                                XX = norm(r_msg.dloc - my_coord); % eucledian distance
                                 if XX <= r_msg.radius   % The drone is inside the destination sphere.
                                     success = 1;
                                     redundancy_count = redundancy_count + 1;
@@ -284,8 +284,8 @@ classdef QRSim<handle
                                     end
                                 end
                             end
-                            x1 = pdist([r_msg.tloc'; my_coord'], 'euclidean');
-                            x2 = pdist([r_msg.dloc'; my_coord'], 'euclidean');
+                            x1 = norm(r_msg.tloc - my_coord); % 'euclidean';
+                            x2 = norm(r_msg.dloc - my_coord); %  'euclidean');
                             X = (x1 + x2) * obj.simState.dist_scale;
                             if X <= (2 * r_msg.major_axis)  % if this drone is in the spheroid
                                 done = done && 0;
@@ -337,8 +337,8 @@ classdef QRSim<handle
             end
         end
         
-        function scat_ct = app_unicast_petal_routing(obj, src, dest, petal_width, data, mark_points, update_petal, boff_type, T_ub, radius)
-            msg = geo_message(obj.simState, src, dest, petal_width, data, mark_points, update_petal, radius);
+        function scat_ct = app_unicast_petal_routing(obj, src, dest, petal_width, data, mark_points, update_petal, boff_type, T_ub, radius, min_width_per)
+            msg = geo_message(obj.simState, src, dest, petal_width, data, mark_points, update_petal, radius, min_width_per);
             [scat_ct, tr_ct, success, hop_count, end_to_end_delay]  = obj.petal_send_message(msg, src, mark_points, boff_type, T_ub);
             fprintf("\n[scat_ct= %d, tr_ct= %d, success= %d, hop_count= %f, end_to_end_delay= %f]\n", scat_ct, tr_ct, success, hop_count, seconds(end_to_end_delay));
         end
