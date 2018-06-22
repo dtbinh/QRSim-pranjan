@@ -146,9 +146,9 @@ for i=1:state.task.durationInSteps
             state.task.reset()
         end
         
-        csvwrite(sprintf("%s_Flood_%d-Pair_%d-Msg_%d-iters_%d-scale.csv", state.task.formation_type, length(pairs(:, 1)), number_of_msgs, number_of_iterations, state.dist_scale), results_flooding);
-        csvwrite(sprintf("%s_petal_%d-Pair_%d-Msg_%d-iters_%d-scale.csv", state.task.formation_type, length(pairs(:, 1)), number_of_msgs, number_of_iterations, state.dist_scale), results_petal);
-        csvwrite(sprintf("%s_petal_upd_%d-Pair_%d-Msg_%d-iters_%d-scale.csv", state.task.formation_type, length(pairs(:, 1)), number_of_msgs, number_of_iterations, state.dist_scale), results_petal_1);
+        csvwrite(sprintf("%s_Flood_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv", state.task.formation_type, length(pairs(:, 1)), number_of_msgs, number_of_iterations, state.dist_scale, min_petal_wid), results_flooding);
+        csvwrite(sprintf("%s_petal_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv", state.task.formation_type, length(pairs(:, 1)), number_of_msgs, number_of_iterations, state.dist_scale, min_petal_wid), results_petal);
+        csvwrite(sprintf("%s_petal_upd_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv", state.task.formation_type, length(pairs(:, 1)), number_of_msgs, number_of_iterations, state.dist_scale, min_petal_wid), results_petal_1);
 
         break;
     end

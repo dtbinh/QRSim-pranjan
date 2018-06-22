@@ -1,18 +1,19 @@
 clear all;
-formation = "random"; % random spherical
+formation = "mesh"; % random spherical
 pairs_ct = 1;
 msgs_ct = 1;
 iterations_ct = 1;
 scale = 4;
+minwid = 1;
 HTLs = 1:1:11;
 petal_sizes = 5:10:105;
 % Make sure that the above variables match from main_plume
-flo = sprintf("%s_Flood_%d-Pair_%d-Msg_%d-iters_%d-scale.csv", formation, pairs_ct, msgs_ct, iterations_ct, scale);
+flo = sprintf("%s_Flood_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv", formation, pairs_ct, msgs_ct, iterations_ct, scale, minwid);
 
 res_flooding = csvread(flo);
-pe = sprintf("%s_petal_%d-Pair_%d-Msg_%d-iters_%d-scale.csv",formation, pairs_ct, msgs_ct, iterations_ct, scale);
+pe = sprintf("%s_petal_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv",formation, pairs_ct, msgs_ct, iterations_ct, scale, minwid);
 res_petal = csvread(pe);
-pe1 = sprintf("%s_petal_upd_%d-Pair_%d-Msg_%d-iters_%d-scale.csv", formation, pairs_ct, msgs_ct, iterations_ct, scale);
+pe1 = sprintf("%s_petal_upd_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv", formation, pairs_ct, msgs_ct, iterations_ct, scale, minwid);
 res_petal_1 = csvread(pe1);
 
 
