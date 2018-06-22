@@ -37,8 +37,8 @@ classdef TaskPlume_1<Task
         time =0;
         vt; % to store target velocities
         furthest_pairs;     % pranjan:
-        formation_type = "random"; 
-        number_of_pairs = 10;  
+        formation_type = "mesh"; 
+        number_of_pairs = 1;  
     end
     
     methods (Sealed,Access=public)
@@ -85,7 +85,7 @@ classdef TaskPlume_1<Task
             %ababujo:obstacles{Column - X Y Z(h) r}
             % taskparams.environment.area.obstacles = taskparams.environment.area.type.obstacles;
             taskparams.environment.area.obstacles = [ ];
-            taskparams.environment.area.plume = [10 10 30 19]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.
+            taskparams.environment.area.plume = [10 10 30 25]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.
             %taskparams.environment.area.plume = [10 40 25 13]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.            
             
             % GPS

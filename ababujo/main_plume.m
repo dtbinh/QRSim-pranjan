@@ -112,9 +112,9 @@ for i=1:state.task.durationInSteps
         
         mark_points = 0;
         number_of_iterations = 1;
-        number_of_msgs = 10;
+        number_of_msgs = 1000;
         petal_sizes = 5:10:105;
-        min_petal_wid = 0.001;
+        min_petal_wid = 1;
         HTLs = 1:1:11;  % HTL array.  Make sure the length of petal_sizes and HTLs is equal.
 
         boff_type = 3;
@@ -124,7 +124,7 @@ for i=1:state.task.durationInSteps
         results_petal = zeros(number_of_rows * number_of_iterations, 10);
         results_petal_1 = zeros(number_of_rows * number_of_iterations, 10);
         results_flooding = zeros(number_of_rows * number_of_iterations, 10);
-        fprintf("Iter ct= %d, msgCt = %d, formation= %s, pair_ct= %d", number_of_iterations, number_of_msgs, state.task.formation_type, state.task.number_of_pairs);
+        fprintf("Iter ct= %d, msgCt = %d, formation= %s, pair_ct= %d, dist_scale = %d", number_of_iterations, number_of_msgs, state.task.formation_type, state.task.number_of_pairs, state.dist_scale);
         for iter_ct = 1:number_of_iterations
             fprintf("\n Iteration Number %d", iter_ct);
             pairs = state.task.furthest_pairs;
@@ -146,10 +146,10 @@ for i=1:state.task.durationInSteps
             state.task.reset()
         end
         
-        csvwrite(sprintf("%s_Flood_%d-Pair_%d-Msg_%d-iters.csv", state.task.formation_type, length(pairs(:, 1)), number_of_msgs, number_of_iterations), results_flooding);
-        csvwrite(sprintf("%s_petal_%d-Pair_%d-Msg_%d-iters.csv", state.task.formation_type, length(pairs(:, 1)), number_of_msgs, number_of_iterations), results_petal);
-        csvwrite(sprintf("%s_petal_upd_%d-Pair_%d-Msg_%d-iters.csv", state.task.formation_type, length(pairs(:, 1)), number_of_msgs, number_of_iterations), results_petal_1);
-        
+        csvwrite(sprintf("%s_Flood_%d-Pair_%d-Msg_%d-iters_%d-scale.csv", state.task.formation_type, length(pairs(:, 1)), number_of_msgs, number_of_iterations, state.dist_scale), results_flooding);
+        csvwrite(sprintf("%s_petal_%d-Pair_%d-Msg_%d-iters_%d-scale.csv", state.task.formation_type, length(pairs(:, 1)), number_of_msgs, number_of_iterations, state.dist_scale), results_petal);
+        csvwrite(sprintf("%s_petal_upd_%d-Pair_%d-Msg_%d-iters_%d-scale.csv", state.task.formation_type, length(pairs(:, 1)), number_of_msgs, number_of_iterations, state.dist_scale), results_petal_1);
+
         break;
     end
     
