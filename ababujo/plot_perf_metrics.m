@@ -1,9 +1,9 @@
 clear all;
-formation = "mesh"; % random spherical
+formation = "spherical"; % random spherical
 pairs_ct = 1;
-msgs_ct = 1;
+msgs_ct = 1000;
 iterations_ct = 1;
-scale = 4;
+scale = 6;
 minwid = 1;
 HTLs = 1:1:11;
 petal_sizes = 5:10:105;
@@ -17,13 +17,16 @@ pe1 = sprintf("%s_petal_upd_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv", for
 res_petal_1 = csvread(pe1);
 
 
-plot_graph_flooding(res_flooding, HTLs, pairs_ct, iterations_ct, "Flooding");
-plot_graph_petals(res_petal, res_petal_1, petal_sizes, pairs_ct, iterations_ct, "3D petal routing");
+plot_graph_flooding(res_flooding, HTLs, pairs_ct, iterations_ct, "Flooding", formation, msgs_ct, scale, minwid);
+plot_graph_petals(res_petal, res_petal_1, petal_sizes, pairs_ct, iterations_ct, "3D petal routing", formation, msgs_ct, scale, minwid);
 
-function plot_graph_petals(petal_results, petal_up_results, petal_sizes, pair_ct, iterations_ct, name)
+function plot_graph_petals(petal_results, petal_up_results, petal_sizes, pair_ct, iterations_ct, name, formation, msgs_ct, scale, minwid)
 x = petal_sizes;
 no_of_rows = length(petal_sizes);
 no_of_cols = pair_ct * iterations_ct;
+
+avg_dist = mean(petal_results(:, 3)) * scale; 
+subtitle = sprintf("\nType= %s, Iterations= %d, Node pairs= %d, Avg Distance = %d m, Packets= %d", formation, iterations_ct, pair_ct, ceil(avg_dist), msgs_ct);
 
 table_size = size(petal_results, 1);
 figure('Name', name, 'NumberTitle', 'off');
@@ -40,8 +43,8 @@ end
 
 errorbar(x, mean(dr1,2), std(dr1,0,2), 'LineStyle', '--', 'DisplayName', "Don't update petal");
 hold on;
-errorbar(x, mean(dr2,2), std(dr2,0,2), 'LineStyle', ':', 'DisplayName', 'Update petal');
-title("Delivery Rate");
+errorbar(x, mean(dr2,2), std(dr2,0,2), 'LineStyle', '-.', 'DisplayName', 'Update petal');
+title(sprintf("Delivery Rate. %s", subtitle));
 xlabel(xlabel_text);
 ylabel("Delivery Rate, '%'");
 ylim([0 110]);
@@ -61,9 +64,9 @@ for i = 1: no_of_rows
 end
 hold on;
 errorbar(x, mean(delay,2), std(delay,0,2), 'LineStyle', '--', 'DisplayName', "Don't update petal");
-errorbar(x, mean(delay_1,2), std(delay_1,0,2),'LineStyle', '-', 'DisplayName', "Update petal");
+errorbar(x, mean(delay_1,2), std(delay_1,0,2),'LineStyle', '-.', 'DisplayName', "Update petal");
 grid on
-title("Average end to end delay");
+title(sprintf("Delay. %s", subtitle));
 xlabel(xlabel_text);
 ylabel("Delay 'seconds'");
 ylim([0 0.25]);
@@ -81,8 +84,8 @@ for i = 1: no_of_rows
 end
 hold on;
 errorbar(x, mean(hops,2), std(hops,0,2), 'LineStyle','--', 'DisplayName', "Don't update petal");
-errorbar(x, mean(hops_1,2), std(hops_1,0,2), 'LineStyle', '-', 'DisplayName', "Update petal");
-title("Average Number of hops");
+errorbar(x, mean(hops_1,2), std(hops_1,0,2), 'LineStyle', '-.', 'DisplayName', "Update petal");
+title(sprintf("Hops. %s", subtitle));
 xlabel(xlabel_text);
 ylabel("Average Number of Hops");
 ylim([0 15]);
@@ -102,33 +105,38 @@ for i = 1: no_of_rows
 end
 hold on;
 errorbar(x, mean(overhead,2), std(overhead,0,2),'LineStyle', '--', 'DisplayName', "Don't update header");
-errorbar(x, mean(overhead_1,2), std(overhead_1,0,2), 'LineStyle', '-','DisplayName', 'Update header');
+errorbar(x, mean(overhead_1,2), std(overhead_1,0,2), 'LineStyle', '-.','DisplayName', 'Update header');
+set(gca,'YScale','log')
 grid on
-title("Average Number of Transmissions");
+title(sprintf("Overhead. %s", subtitle));
 xlabel(xlabel_text);
 ylabel("Average number of transmissions");
-ylim([0 100]);
-yticks(0:10:100);
+%ylim([0 100]);
+%yticks(0:10:100);
 xlim([0 inf])
 xticks([0 x])
 legend();
 end
 
-function plot_graph_flooding(results, HTLs, pair_ct, iterations_ct, name)
+
+
+
+function plot_graph_flooding(results, HTLs, pair_ct, iterations_ct, name, formation, msgs_ct, scale, minwid)
 x = HTLs;
 no_of_rows = length(HTLs);
 no_of_cols = pair_ct * iterations_ct;
 
 figure('Name', name, 'NumberTitle','off');
 xlabel_text = "HTL";
-
+avg_dist = mean(results(:, 3)) * scale; 
+subtitle = sprintf("\nType= %s, Iterations= %d, Node pairs= %d, Avg Distance = %d m, Packets= %d", formation, iterations_ct, pair_ct, ceil(avg_dist), msgs_ct);
 subplot(2,2,1);
 y = zeros(no_of_rows, no_of_cols);
 for i = 1: no_of_rows
     y(i, :) = results(i: no_of_rows: size(results, 1), 5);
 end
 errorbar(x, mean(y,2), std(y,0,2), 'LineStyle', '--', 'DisplayName', "Flooding");
-title("Delivery Rate");
+title(sprintf("Delivery Rate. %s", subtitle));
 xlabel(xlabel_text);
 ylabel("Delivery Rate, '%'");
 ylim([0 110]);
@@ -148,10 +156,11 @@ for i = 1: length(HTLs)
 end
 %bar(x, y2);
 hold on;
-errorbar(x, mean(y2,2), std(y2,0,2), 'LineStyle', ':', 'DisplayName', "End-to-end Delay");
+errorbar(x, mean(y2,2), std(y2,0,2), 'LineStyle', '-.', 'DisplayName', "End-to-end Delay");
 errorbar(x, mean(y1,2), std(y1,0,2), 'LineStyle', '--', 'DisplayName', "Total-flooding-time");
+%set(gca,'YScale','log')
 grid on
-title("Average end to end delay");
+title(sprintf("Delay. %s", subtitle));
 xlabel(xlabel_text);
 ylabel("Delay 'seconds'");
 % ylim([0 0.25]);
@@ -168,7 +177,7 @@ end
 %bar(x, y3);
 errorbar(x, mean(y3,2), std(y3,0,2), 'LineStyle', '--', 'DisplayName', "Flooding");
 
-title("Average Number of hops");
+title(sprintf("Hops. %s", subtitle));
 xlabel(xlabel_text);
 ylabel("Average Number of Hops");
 ylim([0 15]);
@@ -185,9 +194,9 @@ for i = 1: length(HTLs)
     y4(i, :) = results(i: no_of_rows: size(results, 1), 8);
 end
 errorbar(x, mean(y4,2), std(y4,0,2), 'LineStyle', '--', 'DisplayName', "Flooding");
-
+set(gca,'YScale','log')
 grid on
-title("Average Number of Transmissions");
+title(sprintf("Overhead. %s", subtitle));
 xlabel(xlabel_text);
 ylabel("Average number of transmissions");
 % ylim([0 100]);
