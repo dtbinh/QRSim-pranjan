@@ -14,8 +14,8 @@ qrsim = QRSim();
 
 state = qrsim.init('TaskPlume_1');
 unicast = 0;
-evaluate_performance = 1;
-eval_network_density = 0;
+evaluate_performance = 0;
+eval_network_density = 1;
 
 % reminder:
 % platforms in N1 -> no sensing features
@@ -89,22 +89,37 @@ for i=1:state.task.durationInSteps
     if eval_network_density == 1
         mark_points = 0;
         number_of_msgs = 10;
-        pairs = state.task.furthest_pairs;
-        
-        type = "petal";
         petal_sizes = 35:10:36;
+        min_petal_wid = 2;
+        HTLs = 10:1:10;
+
         boff_type = 3;
-        T_ub = 0.001;
+        T_ub = 0.002;
+        fprintf("msgCt = %d, formation= %s, pair_ct= %d, dist_scale = %d", number_of_msgs, state.task.formation_type, state.task.number_of_pairs, state.dist_scale);
+
+        pairs = state.task.furthest_pairs;
         update_petal = 0;
-        results = performace_evaluation(qrsim, state, type, pairs, petal_sizes, number_of_msgs, mark_points, update_petal, boff_type, T_ub);
+        type = "petal";
+        results = performace_evaluation(qrsim, state, type, pairs, petal_sizes, number_of_msgs, mark_points, update_petal, boff_type, T_ub, min_petal_wid);
         results(:,4) = state.task.N4;
-        csvwrite(sprintf("petal_35w_%d_drones_%d_pairs.csv", state.task.N4, length(pairs)), results);
+        f1 = sprintf("D_petal_%d-wid_%d-drones_%d-pairs_%d-msgs_%d-scale_%d-minwid.csv", petal_sizes(1),state.task.N4, size(pairs, 1), number_of_msgs, state.dist_scale, min_petal_wid);
+        csvwrite(f1, results);
+        
+        update_petal = 1;
+        type = "petal";
+        results_up = performace_evaluation(qrsim, state, type, pairs, petal_sizes, number_of_msgs, mark_points, update_petal, boff_type, T_ub, min_petal_wid);
+        results_up(:,4) = state.task.N4;
+        f2 = sprintf("D_petal_UPD_%d-wid_%d-drones_%d-pairs_%d-msgs_%d-scale_%d-minwid.csv", petal_sizes(1),state.task.N4, size(pairs, 1), number_of_msgs, state.dist_scale, min_petal_wid);
+        csvwrite(f2, results_up);
+        
         
         type = "flooding";
         HTLs = 10:1:10;  % HTL array.
-        results_flooding = performace_evaluation(qrsim, state, type, pairs, HTLs, number_of_msgs, mark_points, T_ub);
-        results(:,4) = state.task.N4;
-        csvwrite(sprintf("flooding_10HTL_%d_%d_pairs.csv", state.task.N4, length(pairs)), results_flooding);
+        results_flooding = performace_evaluation(qrsim, state, type, pairs, HTLs, number_of_msgs, mark_points);
+        results_flooding(:,4) = state.task.N4;
+        f3 = sprintf("D_Flooding_%d-HTL_%d-drones_%d-pairs_%d-msgs_%d-scale.csv",HTLs(1), state.task.N4, size(pairs, 1), number_of_msgs, state.dist_scale);
+        csvwrite(f3, results_flooding);
+
         break;
     end
     
@@ -162,7 +177,7 @@ for i=1:state.task.durationInSteps
     
 end
 
-elapsed = toc(tstart);figure();
+elapsed = toc(tstart);
 
 fprintf('running %d times real time\n',(state.task.durationInSteps*state.DT)/elapsed);
 
@@ -172,6 +187,7 @@ for plot_points = 1:(ct)
     set(dataH(plot_points), 'visible', 'off');
 end
 end
+
 
 function results = performace_evaluation(qrsim, state, type, pairs, arguments, number_of_msgs, mark_points, update_petal, boff_type, T_ub, min_petal_wid)
 results = zeros(length(arguments) * length(pairs(:, 1)), 10);
@@ -223,12 +239,12 @@ for idx = 1:length(pairs(:, 1))
                 set_invisible_scatter_plots(scat_ct+2);
             end
         end
+        avg_tot_delay = total_tot_delay / number_of_msgs;
         success_rate = success_count/number_of_msgs * 100;
         if success_count > 0
             avg_number_hops = total_number_of_hops/success_count;
             avg_end_to_end_delay = total_end_to_end_delay / success_count;
             avg_end_to_end_delay.Format = 'hh:mm:ss.SSSSSSSSS';
-            avg_tot_delay = total_tot_delay / success_count;
             overhead = overhead_transmissions / success_count; % Number of transmissions per successfully delivered packet. (includes unsuccessfull transmissions).
             avg_redundant = total_redundant /success_count; % Number of duplicate messages the destination heard.
         else
