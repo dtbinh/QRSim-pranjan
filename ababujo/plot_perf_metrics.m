@@ -1,5 +1,5 @@
 clear all;
-formation = "mesh"; % random spherical
+formation = "spherical"; % random spherical
 pairs_ct = 1;
 msgs_ct = 500;
 iterations_ct = 10;
@@ -20,20 +20,23 @@ res_petal_1 = csvread(pe1);
 plot_graph_flooding(res_flooding, HTLs, pairs_ct, iterations_ct, formation, msgs_ct, scale, minwid);
 plot_graph_petals(res_petal, res_petal_1, petal_sizes, pairs_ct, iterations_ct, formation, msgs_ct, scale, minwid);
 
-function plot_graph_petals(petal_results, petal_up_results, petal_sizes, pair_ct, iterations_ct, formation, msgs_ct, scale, minwid)
+
+function plot_graph_petals(petal_results, petal_up_results, petal_sizes, pair_ct, iterations_ct, formation, msgs_ct, scale, ~)
 x = petal_sizes;
 no_of_rows = length(petal_sizes);
 no_of_cols = pair_ct * iterations_ct;
+fontsize = 14;
+leg_font_size = 13;
 
 avg_dist = mean(petal_results(:, 3)) * scale; 
-subtitle = sprintf("\nType= %s, Iterations= %d, Node pairs= %d, Avg Distance = %d m, Packets= %d", formation, iterations_ct, pair_ct, ceil(avg_dist), msgs_ct);
+subtitle = sprintf("Type= %s, Iterations= %d \n Node pairs= %d, Avg Distance = %d m, Packets= %d", formation, iterations_ct, pair_ct, ceil(avg_dist), msgs_ct);
 fig_name = sprintf("Petal Routing %s Iter-%d, Pairs= %d, Pkts=%d", formation, iterations_ct, pair_ct, msgs_ct);
 table_size = size(petal_results, 1);
-figure('Name', fig_name, 'NumberTitle', 'off');
-xlabel_text = "'Petal-width' to 'src-dst distance', '%'";
+%figure('Name', fig_name, 'NumberTitle', 'off');
+xlabel_text = "Petal-width $$(\%)$$";
 
-subplot(2,2,1);
-
+%subplot(2,2,1);
+mfig = figure();
 dr1 = zeros(no_of_rows, no_of_cols);
 dr2 = zeros(no_of_rows, no_of_cols);
 for i = 1: no_of_rows
@@ -43,18 +46,22 @@ end
 
 errorbar(x, mean(dr1,2), std(dr1,0,2)/sqrt(size(dr1, 2)), 'LineStyle', '--', 'DisplayName', "Single Transmission Zone");
 hold on;
-errorbar(x, mean(dr2,2), std(dr2,0,2)/sqrt(size(dr2, 2)), 'LineStyle', '-.', 'DisplayName', 'Diverged Transmission Zone');
-title(sprintf("Delivery Rate. %s", subtitle));
-xlabel(xlabel_text);
-ylabel("Delivery Rate, '%'");
+errorbar(x, mean(dr2,2), std(dr2,0,2)/sqrt(size(dr2, 2)), 'LineStyle', '-.', 'DisplayName', 'Diverged Transmission Zoness');
+title(sprintf("Delivery Rate. %s", subtitle), 'Interpreter', 'latex', 'FontSize', fontsize, 'FontWeight', 'bold');
+xlabel(xlabel_text, 'Interpreter', 'latex', 'FontWeight', 'bold', 'FontSize', fontsize);
+ylabel("Delivery Rate $$(\%)$$", 'Interpreter', 'latex', 'FontSize', fontsize);
 ylim([0 110]);
-yticks(0:10:100)
-xlim([0 inf])
+yticks(0:10:100);
+xlim([0 x(end)+5]);
 xticks([0, x])
-legend('Location','southeast');
+lgd = legend('Location','southeast');
+lgd.FontSize = leg_font_size;
 grid on
+fname = sprintf("pe_DR_%s.png", formation);
+saveas(mfig, fname);
+%print(mfig, fname, '-dpdf');
 
-subplot(2,2,2);
+mfig = figure();
 delay = zeros(no_of_rows, no_of_cols);
 delay_1 = zeros(no_of_rows, no_of_cols);
 
@@ -64,18 +71,21 @@ for i = 1: no_of_rows
 end
 hold on;
 errorbar(x, mean(delay,2), std(delay,0,2)/sqrt(size(delay, 2)), 'LineStyle', '--', 'DisplayName', "Single Transmission Zone");
-errorbar(x, mean(delay_1,2), std(delay_1,0,2)/sqrt(size(delay_1, 2)),'LineStyle', '-.', 'DisplayName', "Diverged Transmission Zone");
+errorbar(x, mean(delay_1,2), std(delay_1,0,2)/sqrt(size(delay_1, 2)),'LineStyle', '-.', 'DisplayName', "Diverged Transmission Zones");
 grid on
-title(sprintf("Delay. %s", subtitle));
-xlabel(xlabel_text);
-ylabel("Delay 'seconds'");
+title(sprintf("Delay. %s", subtitle), 'Interpreter', 'latex', 'FontSize', fontsize);
+xlabel(xlabel_text, 'Interpreter', 'latex', 'FontSize', fontsize);
+ylabel("Delay (seconds)", 'Interpreter', 'latex', 'FontSize', fontsize);
 ylim([0 0.25]);
 yticks(0:0.02:0.25);
-xticks([0, x])
-xlim([0 inf])
-legend();
+xticks([0, x]);
+xlim([0 x(end)+5]);
+leg = legend();
+leg.FontSize = leg_font_size;
+fname = sprintf("pe_delay_%s.png", formation);
+saveas(mfig, fname);
 
-subplot(2,2,3);
+mfig = figure();
 hops = zeros(no_of_rows, no_of_cols);
 hops_1 = zeros(no_of_rows, no_of_cols);
 for i = 1: no_of_rows
@@ -84,18 +94,22 @@ for i = 1: no_of_rows
 end
 hold on;
 errorbar(x, mean(hops,2), std(hops,0,2)/sqrt(size(hops, 2)), 'LineStyle','--', 'DisplayName', "Single Transmission Zone");
-errorbar(x, mean(hops_1,2), std(hops_1,0,2)/sqrt(size(hops_1, 2)), 'LineStyle', '-.', 'DisplayName', "Diverged Transmission Zone");
-title(sprintf("Hops. %s", subtitle));
-xlabel(xlabel_text);
-ylabel("Average Number of Hops");
+errorbar(x, mean(hops_1,2), std(hops_1,0,2)/sqrt(size(hops_1, 2)), 'LineStyle', '-.', 'DisplayName', "Diverged Transmission Zones");
+title(sprintf("Hop Count. %s", subtitle), 'Interpreter', 'latex', 'FontSize', fontsize);
+xlabel(xlabel_text, 'Interpreter', 'latex', 'FontSize', fontsize);
+ylabel("Average Number of Hops", 'Interpreter', 'latex', 'FontSize', fontsize);
 ylim([0 15]);
 yticks(0:1:15);
 xticks([0, x])
-xlim([0 inf])
-legend();
-grid on
+xlim([0 x(end)+5]);
+leg = legend();
+leg.FontSize = leg_font_size;
+grid on;
+fname= sprintf("pe_hops_%s.png", formation);
+saveas(mfig, fname);
 
-subplot(2,2,4);
+
+mfig = figure();
 overhead = zeros(no_of_rows, no_of_cols);
 overhead_1 = zeros(no_of_rows, no_of_cols);
 
@@ -105,49 +119,61 @@ for i = 1: no_of_rows
 end
 hold on;
 errorbar(x, mean(overhead,2), std(overhead,0,2)/sqrt(size(overhead, 2)),'LineStyle', '--', 'DisplayName', "Single Transmission Zone");
-errorbar(x, mean(overhead_1,2), std(overhead_1,0,2)/sqrt(size(overhead_1, 2)), 'LineStyle', '-.','DisplayName', 'Diverged Transmission Zone');
-ylim([0 10000]);
+errorbar(x, mean(overhead_1,2), std(overhead_1,0,2)/sqrt(size(overhead_1, 2)), 'LineStyle', '-.','DisplayName', 'Diverged Transmission Zones');
+%ylim([0 10000]);
 set(gca,'YScale','log');
 grid on
-title(sprintf("Overhead. %s", subtitle));
-xlabel(xlabel_text);
-ylabel("Average number of transmissions");
+title(sprintf("Overhead. %s", subtitle), 'Interpreter', 'latex', 'FontSize', fontsize);
+xlabel(xlabel_text, 'Interpreter', 'latex', 'FontSize', fontsize);
+ylabel("Average number of transmissions", 'Interpreter', 'latex', 'FontSize', fontsize);
 %yticks(0:10:100);
-xlim([0 inf])
-xticks([0 x])
-legend();
+xlim([0 x(end)+5]);
+xticks([0 x]);
+leg = legend();
+leg.FontSize = leg_font_size;
+fname = sprintf("pe_trans_%s.png", formation);
+saveas(mfig, fname);
 end
 
 
 
 
-function plot_graph_flooding(results, HTLs, pair_ct, iterations_ct, formation, msgs_ct, scale, minwid)
+function plot_graph_flooding(results, HTLs, pair_ct, iterations_ct, formation, msgs_ct, scale, ~)
+fontsize = 14;
+leg_font_size = 13;
 x = HTLs;
 no_of_rows = length(HTLs);
 no_of_cols = pair_ct * iterations_ct;
 fig_name = sprintf("Flooding, %s Iter-%d, Pairs= %d, Pkts=%d", formation, iterations_ct, pair_ct, msgs_ct);
-figure('Name', fig_name, 'NumberTitle','off');
-xlabel_text = "HTL";
+%figure('Name', fig_name, 'NumberTitle','off');
+xlabel_text = "Hops to Live";
 avg_dist = mean(results(:, 3)) * scale; 
-subtitle = sprintf("\nType= %s, Iterations= %d, Node pairs= %d, Avg Distance = %d m, Packets= %d", formation, iterations_ct, pair_ct, ceil(avg_dist), msgs_ct);
-subplot(2,2,1);
+subtitle = sprintf("Type= %s, Iterations= %d, \nNode pairs= %d, Avg Distance = %d m, Packets= %d", formation, iterations_ct, pair_ct, ceil(avg_dist), msgs_ct);
+%subplot(2,2,1);
+
+mfig = figure();
 y = zeros(no_of_rows, no_of_cols);
 for i = 1: no_of_rows
     y(i, :) = results(i: no_of_rows: size(results, 1), 5);
 end
-errorbar(x, mean(y,2), std(y,0,2)/sqrt(size(y, 2)), 'LineStyle', '--', 'DisplayName', "Flooding");
-title(sprintf("Delivery Rate. %s", subtitle));
-xlabel(xlabel_text);
-ylabel("Delivery Rate, '%'");
+errorbar(x, mean(y,2), std(y,0,2)/sqrt(size(y, 2)), 'LineStyle', '--', 'DisplayName', "Delivery Rate - Flooding");
+title(sprintf("Delivery Rate. %s", subtitle), 'FontSize', fontsize, 'Interpreter', 'latex');
+xlabel(xlabel_text, 'FontSize', fontsize, 'Interpreter', 'latex');
+ylabel("Delivery Rate $$(\%)$$", 'FontSize', fontsize, 'Interpreter', 'latex');
 ylim([0 110]);
-yticks(0:10:100)
-xlim([0 inf])
-xticks([0, x])
-legend('Location','southeast');
+yticks(0:10:100);
+xlim([0 x(end)+1]);
+xticks([0, x]);
+leg = legend('Location','southeast');
+leg.FontSize = leg_font_size;
 grid on
+fname = sprintf("fl_DR_%s.png", formation);
+saveas(mfig, fname);
 
 
-subplot(2,2,2);
+
+%subplot(2,2,2);
+mfig = figure();
 y1 = zeros(no_of_rows, no_of_cols);
 y2 = zeros(no_of_rows, no_of_cols);
 for i = 1: length(HTLs)
@@ -160,48 +186,59 @@ errorbar(x, mean(y2,2), std(y2,0,2)/sqrt(size(y2, 2)), 'LineStyle', '-.', 'Displ
 errorbar(x, mean(y1,2), std(y1,0,2)/sqrt(size(y1, 2)), 'LineStyle', '--', 'DisplayName', "Total-flooding-time");
 %set(gca,'YScale','log')
 grid on
-title(sprintf("Delay. %s", subtitle));
-xlabel(xlabel_text);
-ylabel("Delay 'seconds'");
+title(sprintf("Delay. %s", subtitle), 'Interpreter', 'latex', 'FontSize', fontsize);
+xlabel(xlabel_text, 'Interpreter', 'latex', 'FontSize', fontsize);
+ylabel("Delay (seconds)", 'Interpreter', 'latex', 'FontSize', fontsize);
 ylim([0 0.25]);
 yticks(0:0.02:0.25);
-xticks([0, x])
-xlim([0 inf])
-legend();
+xticks([0, x]);
+xlim([0 x(end)+1]);
+leg = legend();
+leg.FontSize = leg_font_size;
+fname = sprintf("fl_delay_%s.png", formation);
+saveas(mfig, fname);
 
-subplot(2,2,3);
+mfig = figure();
+%subplot(2,2,3);
 y3 = zeros(no_of_rows, no_of_cols);
 for i = 1: length(HTLs)
     y3(i, :) = results(i: no_of_rows: size(results, 1), 7);
 end
 %bar(x, y3);
-errorbar(x, mean(y3,2), std(y3,0,2)/sqrt(size(y3, 2)), 'LineStyle', '--', 'DisplayName', "Flooding");
+errorbar(x, mean(y3,2), std(y3,0,2)/sqrt(size(y3, 2)), 'LineStyle', '--', 'DisplayName', "Hop Count - Flooding");
 
-title(sprintf("Hops. %s", subtitle));
-xlabel(xlabel_text);
-ylabel("Average Number of Hops");
+title(sprintf("Hop Count. %s", subtitle), 'Interpreter', 'latex', 'FontSize', fontsize);
+xlabel(xlabel_text, 'Interpreter', 'latex', 'FontSize', fontsize);
+ylabel("Average Number of Hops", 'Interpreter', 'latex', 'FontSize', fontsize);
 ylim([0 15]);
 yticks(0:1:15);
 xticks([0, x])
-xlim([0 inf])
-legend();
+xlim([0 x(end)+1]);
+leg = legend();
+leg.FontSize = leg_font_size;
 grid on
+fname = sprintf("fl_hops_%s.png", formation);
+saveas(mfig, fname); 
 %     text(-1, 18, "\approx", 'Fontsize', 20);
 
-subplot(2,2,4);
+%subplot(2,2,4);
+mfig = figure();
 y4 = zeros(no_of_rows, no_of_cols);
 for i = 1: length(HTLs)
     y4(i, :) = results(i: no_of_rows: size(results, 1), 8);
 end
-errorbar(x, mean(y4,2), std(y4,0,2)/sqrt(size(y4, 2)), 'LineStyle', '--', 'DisplayName', "Flooding");
-ylim([10 1100]);
+errorbar(x, mean(y4,2), std(y4,0,2)/sqrt(size(y4, 2)), 'LineStyle', '--', 'DisplayName', "Avg Transmissions - Flooding");
+%ylim([10 1100]);
 set(gca,'YScale','log')
 grid on
-title(sprintf("Overhead. %s", subtitle));
-xlabel(xlabel_text);
-ylabel("Average number of transmissions");
+title(sprintf("Overhead. %s", subtitle), 'Interpreter', 'latex', 'FontSize', fontsize);
+xlabel(xlabel_text, 'Interpreter', 'latex', 'FontSize', fontsize);
+ylabel("Average number of transmissions", 'Interpreter', 'latex', 'FontSize', fontsize);
 % yticks(0:10:100);
-xlim([0 inf])
+xlim([0 x(end)+1]);
 xticks([0 x])
-legend();
+leg = legend();
+leg.FontSize = leg_font_size;
+fname = sprintf("fl_trans_%s.png", formation);
+saveas(mfig, fname);
 end
