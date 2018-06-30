@@ -7,12 +7,12 @@ classdef uav_message
         timestamp   % timestamp when the message originated
         src         % Source UAV no.
         dest        % Destination UAV no.
-        HTL         % Hops to Live
+        HTL         % Hops to Live, equivalent of TTL in regular IP packets.
         origin_coord  % The x,y,z coordinate of the src UAV when the message was transmitted
         type        % 1= plumeDetected, 2=CoordinateUpdate
         data          % The data
         hop_count     %  % Number of hops this packet made to reach the destination.
-        boff_time       % Not used for now.
+        boff_time       % Not used for uav_message. Required to make uav_message objects compatible with functions accpeting geo_message objects.
         can_update      % Dummy, just to make it compatile with functions accepting geo_message.
     end
     

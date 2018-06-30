@@ -13,9 +13,6 @@ classdef TaskPlume_1<Task
         N1 = 0;             % drones without any obstacle sensing capability
         N2 = 0;             % drones with the ability to sense anything in the radius of 10f
         N3 = 0;             % drones with the ability to sense anything in the radius of 5f
-        N4 = 36;             % drones when sensing another drone carries straight on assuming the other drones would change its route
-                       % pranjan Keep N4 as a square number, this way the initial drones
-                       % can be positioned in a nice square grid.
         N5 = 0;             % drones when sensing another drone tries to fly above it.
         hfix = 15;           % fix flight altitude
         PENALTY = 1000;      % penalty reward in case of collision
@@ -37,8 +34,13 @@ classdef TaskPlume_1<Task
         time =0;
         vt; % to store target velocities
         furthest_pairs;     % pranjan:
-        formation_type = "mesh"; 
+        formation_type = "random"; 
         number_of_pairs = 1;  
+        % pranjan: made N4 a non constant variable to change the number of drones at run time.
+        N4 = 36;       % drones when sensing another drone carries straight on assuming the other drones would change its route
+                       % pranjan Keep N4 as a square number, this way the initial drones
+                       % can be positioned in a nice square grid.
+              
     end
     
     methods (Sealed,Access=public)
@@ -55,6 +57,9 @@ classdef TaskPlume_1<Task
             %          params - the task parameters
             %
             fprintf("I was called\n");
+            if obj.simState.N4 > 0  % Wordaround to 
+                obj.N4 = obj.simState.N4;
+            end
             taskparams.dt = 0.2; % task timestep i.e. rate at which controls
             % are supplied and measurements are received
             
@@ -173,7 +178,7 @@ classdef TaskPlume_1<Task
         end
 
         
-        function fixed_speherical(obj)
+        function random_speherical(obj)
             N = obj.N4;
             theta = 2 * pi * rand(1,N);  % Generate 36 values between 0 to 360 degrees.
             phi = asin(-1+2*rand(1,N));
@@ -191,7 +196,8 @@ classdef TaskPlume_1<Task
         
         function mesh_formation(obj)
             N = obj.N4;
-            X = sqrt(N);
+            X = floor(sqrt(N));  % N SHOULD BE A PERFECT SQUARE.
+            
             % For 9 drones, the below will be reasonable
 %             Y_seperation = 15;  Z_seperation = 15; Z_base = 0; 
 %             Y_base = 50;    % Y coordinate of Drone #1 X_base = -10;   
@@ -219,7 +225,7 @@ classdef TaskPlume_1<Task
                 case "random"
                     obj.uniform_random_formation();
                 case "spherical"
-                    obj.fixed_speherical();
+                    obj.random_speherical();
                 otherwise
                     obj.number_of_pairs = min(20, obj.number_of_pairs);  
                     obj.mesh_formation();
