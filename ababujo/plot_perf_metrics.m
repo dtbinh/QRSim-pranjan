@@ -1,14 +1,14 @@
 clear all;
 
 global single_figure;
-single_figure = 0;
+single_figure = 1;
 
-formation = "mesh"; % random spherical
+formation = "spherical"; % random spherical
 pairs_ct = 1;
 msgs_ct = 500;
-iterations_ct = 10;
+iterations_ct = 30;
 scale = 8;
-minwid = 2;
+minwid = 1;
 HTLs = 1:1:11;
 petal_sizes = 5:10:105;
 % Make sure that the above variables match from main_plume
@@ -56,7 +56,7 @@ end
 
 errorbar(x, mean(dr1,2), std(dr1,0,2)/sqrt(size(dr1, 2)), 'LineStyle', '--', 'DisplayName', "Single Transmission Zone");
 hold on;
-errorbar(x, mean(dr2,2), std(dr2,0,2)/sqrt(size(dr2, 2)), 'LineStyle', '-.', 'DisplayName', 'Diverged Transmission Zoness');
+errorbar(x, mean(dr2,2), std(dr2,0,2)/sqrt(size(dr2, 2)), 'LineStyle', '-.', 'DisplayName', 'Diverged Transmission Zones');
 title(sprintf("Delivery Rate. %s", subtitle), 'Interpreter', 'latex', 'FontSize', fontsize, 'FontWeight', 'bold');
 xlabel(xlabel_text, 'Interpreter', 'latex', 'FontWeight', 'bold', 'FontSize', fontsize);
 ylabel("Delivery Rate $$(\%)$$", 'Interpreter', 'latex', 'FontSize', fontsize);
