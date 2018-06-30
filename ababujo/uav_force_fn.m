@@ -37,8 +37,8 @@ function uav_force_fn() % fn, d_ideal, m_dst, elastic, f_max)
     line([0, 60], [fmax, fmax], 'LineStyle',':', 'LineWidth',1);
     line([0, 60], [-fmax, -fmax], 'LineStyle',':', 'LineWidth',1);
     yticks([-fmax, 0, fmax]);
-    yticklabels(["Fmin", "0", "Fmax"]);
-    yticklabels(["$- F_{max}$", "0", "$F_{max}$"], 'Interpreter', 'latex');
+    yticklabels(["-Fmax", "0", "Fmax"]);
+    %yticklabels(["$- F_{max}$", "0", "$F_{max}$"], 'Interpreter', 'latex');
     %xticks([a, dmin, dmax, b, c, d, e]);
 %    Fr = getframe(mfig);
 %    imwrite(Fr.cdata, 'force_function.pdf')

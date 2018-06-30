@@ -62,7 +62,7 @@ classdef TaskPlume_1<Task
             
             %%%%% visualization %%%%%
             % 3D display parameters
-            taskparams.display3d.on = 0;
+            taskparams.display3d.on = 1;
             taskparams.display3d.width = 1000;
             taskparams.display3d.height = 600;
             
@@ -85,7 +85,7 @@ classdef TaskPlume_1<Task
             %ababujo:obstacles{Column - X Y Z(h) r}
             % taskparams.environment.area.obstacles = taskparams.environment.area.type.obstacles;
             taskparams.environment.area.obstacles = [ ];
-            taskparams.environment.area.plume = [10 10 30 25]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.
+            taskparams.environment.area.plume = [10 10 30 15]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.
             %taskparams.environment.area.plume = [10 40 25 13]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.            
             
             % GPS
@@ -192,9 +192,9 @@ classdef TaskPlume_1<Task
         function mesh_formation(obj)
             N = obj.N4;
             X = sqrt(N);
-%             % For 9 drones, the below will be reasonable
-%             Y_seperation = 6;  Z_seperation = 6; Z_base = -20; 
-%             Y_base = 20;    % Y coordinate of Drone #1 X_base = -10;   
+            % For 9 drones, the below will be reasonable
+%             Y_seperation = 15;  Z_seperation = 15; Z_base = 0; 
+%             Y_base = 50;    % Y coordinate of Drone #1 X_base = -10;   
             % For 36 drones, the below will be reasonable
             Y_seperation = 10;  Z_seperation = 10; Z_base = 5; 
             Y_base = 44;    % Y coordinate of Drone #1 
@@ -247,12 +247,13 @@ classdef TaskPlume_1<Task
         function acc_mag = get_acceleration_mag(obj, m_dst, me, peer)
             mass = obj.simState.platforms{me}.MASS;
             f_max = obj.simState.platforms{me}.F_MAX;
-            d_ideal = obj.simState.platforms{me}.distances(:,peer);  % Scale d_ideal.
-            % scale m_dst and d_ideal
-            %d_ideal = d_ideal * obj.simState.dist_scale;
-            %m_dst = m_dst * obj.simState.dist_scale;
+            d_ideal = obj.simState.platforms{me}.distances(:,peer);  
             elastic = obj.simState.platforms{me}.elasticity;
-            force = force_fields("skewed_sigmoid_field", d_ideal, m_dst, elastic, f_max);%.even_force_field();
+            buff = d_ideal * elastic;
+            d_max = d_ideal + buff;
+            d_min = buff;
+            d_max_ex = d_max + buff;
+            force = force_fields("sigmoid_field", f_max, m_dst, d_min, d_max, d_max_ex);
             acc_mag = force / mass;
         end
         
