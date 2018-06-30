@@ -28,7 +28,7 @@ classdef QRSim<handle
     end
     
     methods (Sealed,Access=public)
-        function obj = QRSim()
+        function obj = QRSim(varargin)  % varargin is the hack related to N4. See above.
             % Constructs object and sets up the paths
             %
             % Example:
@@ -42,8 +42,11 @@ classdef QRSim<handle
             obj.paths = [obj.toPathArray(p(1:idx(end))),obj.toPathArray([p(1:idx(end)-4),'3rdparty'])];
             
             addpath(obj.paths);
-            
             obj.simState = State();
+            if nargin == 1
+                obj.simState.N4 = varargin{1};
+            end
+
         end
         
         function state = init(obj,taskName)
