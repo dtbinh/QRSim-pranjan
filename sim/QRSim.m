@@ -296,7 +296,7 @@ classdef QRSim<handle
                                     centroid_dist = pdist([centroid_coords'; r_msg.dloc'], 'euclidean');
                                     my_dest_dist = pdist([my_coord'; r_msg.dloc'], 'euclidean');
                                     if centroid_dist >= my_dest_dist
-                                        % Centroid is further than self.
+                                        % Centroid is closer to the destination than self.
                                         % hence transmit.
                                         r_msg.hop_count = r_msg.hop_count + 1;
                                         if r_msg.can_update == 1 && mark_points == 1 && norm(r_msg.sloc - r_msg.tloc) > 0
@@ -410,7 +410,8 @@ classdef QRSim<handle
                 if obj.simState.platforms{origin}.isValid()     % Why this? because when a drone is dead it should not send it's coordinates.
                     dest = 0; % 0 means broadcast.
                     HTL = 1;  % Hops to live.
-                    msg = uav_message(obj.simState, origin, dest, HTL, "Coordinates", 2, 0);
+                    type = 2; % 1= plumeDetected, 2=CoordinateUpdate
+                    msg = uav_message(obj.simState, origin, dest, HTL, "Coordinates", type, 0);
                     for dst=1:obj.simState.task.N4
                         obj.simState.platforms{origin}.send_message(msg, origin, dst);
                     end
