@@ -44,7 +44,7 @@ classdef QRSim<handle
             addpath(obj.paths);
             obj.simState = State();
             if nargin == 1
-                obj.simState.N4 = varargin{1};
+                obj.simState.number_of_drones = varargin{1};
             end
 
         end
@@ -236,7 +236,7 @@ classdef QRSim<handle
                 fprintf("\n Drone %d state not valid", transmitter);
                 return
             end
-            UTC = datetime(1970,1,1,0,0,0);
+            UTC = datetime(1970,1,1,0,0,0);  % Unix epoch
             redundancy_count = 0;
             success = 0;
             tr_ct = 1;  % at least the source will transmit once.
@@ -257,8 +257,7 @@ classdef QRSim<handle
                 done = 1;
                 for drone = 1: obj.simState.task.N4
                     if isKey(obj.simState.platforms{drone}.messages, msg.id)
-                        % if the destination drone has received the
-                        % message.
+                        % if the drone has received the message.
                         r_msg = obj.simState.platforms{drone}.messages(msg.id);
                         my_coord = obj.simState.platforms{drone}.getX(1:3);
                         if drone == r_msg.dest
@@ -275,7 +274,7 @@ classdef QRSim<handle
                         else
                             if r_msg.dest == 0  % this is a geocast packet.
                                 XX = norm(r_msg.dloc - my_coord); % eucledian distance
-                                if XX <= r_msg.radius   % The drone is inside the destination sphere.
+                                if ceil(XX) <= ceil(r_msg.radius)   % The drone is inside the destination sphere.
                                     success = 1;
                                     redundancy_count = redundancy_count + 1;
                                     hop_count = r_msg.hop_count;
@@ -287,7 +286,11 @@ classdef QRSim<handle
                                     end
                                 end
                             end
-                            x1 = norm(r_msg.tloc - my_coord); % 'euclidean';
+                            if r_msg.can_update == 1
+                                x1 = norm(r_msg.tloc - my_coord); % Diverged petal case. 
+                            else
+                                x1 = norm(r_msg.sloc - my_coord); % 'euclidean' distance; Single petal case                            
+                            end
                             x2 = norm(r_msg.dloc - my_coord); %  'euclidean');
                             X = (x1 + x2) * obj.simState.dist_scale;
                             if X <= (2 * r_msg.major_axis)  % if this drone is in the spheroid
@@ -299,7 +302,7 @@ classdef QRSim<handle
                                     centroid_dist = pdist([centroid_coords'; r_msg.dloc'], 'euclidean');
                                     my_dest_dist = pdist([my_coord'; r_msg.dloc'], 'euclidean');
                                     if centroid_dist >= my_dest_dist
-                                        % Centroid is closer to the destination than self.
+                                        % I am closer to the destination than the Centroid.
                                         % hence transmit.
                                         r_msg.hop_count = r_msg.hop_count + 1;
                                         if r_msg.can_update == 1 && mark_points == 1 && norm(r_msg.sloc - r_msg.tloc) > 0
@@ -308,6 +311,7 @@ classdef QRSim<handle
                                         for dest= 1:obj.simState.task.N4
                                             obj.simState.platforms{drone}.send_one_hop_message(r_msg, drone, dest, T_ub, boff_type);
                                         end
+                                        obj.simState.platforms{drone}.tr_msgs(r_msg.id) = 1;
                                         %fprintf("\n Message %s repeated by %d ", msg.id, drone);
                                         tr_ct = tr_ct + 1;
                                         if mark_points == 1
@@ -316,11 +320,12 @@ classdef QRSim<handle
                                             mark_pt_ct = mark_pt_ct + 1;
                                         end
                                     elseif mark_points == 1
+                                            % Centroid is closer to the
+                                            % destination. Don't transmit.
                                             scatter3(my_coord(1), my_coord(2), my_coord(3)-2, 60, 'green', 'filled');
                                             mark_pt_ct = mark_pt_ct + 1;
                                     end
                                     remove(obj.simState.platforms{drone}.messages, r_msg.id);
-                                    obj.simState.platforms{drone}.tr_msgs(r_msg.id) = 1;
                                 else
                                     fprintf(".");
                                 end
@@ -332,7 +337,6 @@ classdef QRSim<handle
                                     mark_pt_ct = mark_pt_ct + 1;
                                 end
                                 remove(obj.simState.platforms{drone}.messages, r_msg.id);
-                                obj.simState.platforms{drone}.tr_msgs(r_msg.id) = 1;  
                             end
                         end
                     end
@@ -347,13 +351,28 @@ classdef QRSim<handle
         end
         
         
-        function [scat_ct, tr_ct, success, hop_count, end_to_end_delay, redundancy_count] = flood_packet(obj, msg, transmitter, mark_points)
+        function [mark_ct, tr_ct, success, hop_count, end_to_end_delay, redundancy_count] = flood_packet(obj, msg, transmitter, mark_points)
+            % This method will deliver msg to all the reachable nodes in
+            % the network.
+            % Input: msg: A uav_message object. 
+            %        transmitter: integer. representing transmitting UAV ID
+            %        mark_points: integer. Flag, if set then UAVs will be
+            %        marked by spots to visually represent which UAVs
+            %        transmitted a packet. NOTE: this slows down the
+            %        simulation a LOT.
+            % OUTPUT: mark_ct: integer. Count of the number of points that
+            % were marked. Used to clear those points from UI
+            %         tr_ct: integer. Number of transmissions.
+            %         success: integer. 1 if the destination received the
+            %         message
+            %         hop_count: integer. Number of hops 
+            %         end_to_end_delay: End to end delay.
             if obj.simState.platforms{transmitter}.isValid() == false
                 fprintf("\n Drone %d state not valid", transmitter);
                 return
             end
-            T_ub = 0;
-            scat_ct = 0;
+            T_ub = 0;  % TO maintain consistency with geo_message. NOT USED.
+            mark_ct = 0;
             tr_ct = 0;     % Transmission count
             success = 0;   % Message successfully delivered?
             hop_count = 0; % Number of hops made to reach destination.
@@ -390,7 +409,7 @@ classdef QRSim<handle
                             end
                             
                             tr_ct = tr_ct + 1;
-                            scat_ct = scat_ct + 1;
+                            mark_ct = mark_ct + 1;
                             remove(obj.simState.platforms{drone}.messages, r_msg.id);
                             obj.simState.platforms{drone}.tr_msgs(r_msg.id) = 1;
                         end
@@ -406,7 +425,23 @@ classdef QRSim<handle
             fprintf("\n[scat_ct= %d, tr_ct= %d, success= %d, hop_count= %f, end_to_end_delay= %f]\n", scat_ct, tr_ct, success, hop_count, seconds(end_to_end_delay));
         end
         
+        function location_table_exchange(obj)
+            % Update location table from the messages in the in_msg_queue.
+            for drone= 1: obj.simState.task.N4
+                obj.simState.platforms{drone}.update_location_table(drone);
+            end
+            % These two loops are supposed to be seperate. The rationale is
+            % that all the nodes should first update their respective
+            % location table before any one transmits the location table.
+            % Moreover, the location update sent in this time step shall be
+            % read in the next time step.
+            
+            for drone=1: obj.simState.task.N4
+                obj.simState.platforms{drone}.transmit_location_table(drone);
+            end
+        end
         function broadcast_coordinates(obj)
+            warning("DEPRECATED - DO NOT CALL THIS METHOD");
             % In this loop all drones generate a new message and broadcast
             % them.
             for origin=1:obj.simState.task.N4

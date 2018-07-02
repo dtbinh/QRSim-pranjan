@@ -5,7 +5,9 @@ classdef geo_message
         sloc        % Message origin location
         dest        % Destination UAV no.
         dloc        % Message destination location.
+        dloc_ts     % timestamp of how old the dloc data is. If an intermediate node (N) has newer location then the N will update it.
         radius      % If dest is 0 then any node in the sphere with center at dloc and radius is a destination.
+        tid         % Last transmitter's ID.
         tloc        % Last transmitter's location.
         boff_time   % backoff_time before this message is retransmitted.
         timestamp   % timestamp when the message originated
@@ -27,19 +29,26 @@ classdef geo_message
             obj.id = char(java.util.UUID.randomUUID);
             obj.src = src;
             obj.sloc = simState.platforms{src}.getX(1:3);
+            obj.tid = src;
             obj.tloc = obj.sloc;
+            obj.timestamp = datetime('now');
             if length(dest) == 1
                 obj.dest = dest;  % dest is a natural number which represents a drone ID at application level.
-                obj.dloc = simState.platforms{dest}.getX(1:3);
+                %obj.dloc = simState.platforms{dest}.getX(1:3);
+                temp_d = simState.platforms{dest}.location_table(dest);
+                obj.dloc = temp_d{1};
+                obj.dloc_ts = temp_d{2};
+                obj.can_update = can_update;
+                obj.radius = 0; % * simState.dist_scale;
             else
                 obj.dest = 0;   % 0 means broadcast message
                 obj.dloc = dest;    % Any drone inside a spherical volume around this region is a recepient of this message.
+                obj.dloc_ts = obj.timestamp;
+                obj.can_update = 0;
+                obj.radius = radius; % * simState.dist_scale;
             end
-            obj.radius = radius; % * simState.dist_scale;
             obj.boff_time = 0;
-            obj.timestamp = datetime('now');
             obj.hop_count = 0;
-            obj.can_update = can_update;
             
             obj.src_dst_dist = norm(obj.sloc - obj.dloc) * simState.dist_scale;
             D = obj.src_dst_dist / 2;
