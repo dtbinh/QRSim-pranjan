@@ -1,23 +1,30 @@
 clear all;
 
 global single_figure;
-single_figure = 1;
+single_figure = 0;
+speed_effects_graph = 0;
 
-formation = "spherical"; % random spherical
+formation = "mesh"; % random spherical
 pairs_ct = 1;
 msgs_ct = 500;
-iterations_ct = 30;
+iterations_ct = 10;
 scale = 8;
-minwid = 1;
+minwid = 2;
 HTLs = 1:1:11;
 petal_sizes = 5:10:105;
 % Make sure that the above variables match from main_plume
-flo = sprintf("%s_Flood_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv", formation, pairs_ct, msgs_ct, iterations_ct, scale, minwid);
 
+if speed_effects_graph == 1
+    flo = sprintf("SP_%s_Flood_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv", formation, pairs_ct, msgs_ct, iterations_ct, scale, minwid);
+    pe = sprintf("SP_%s_petal_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv", formation, pairs_ct, msgs_ct, iterations_ct, scale, minwid);
+    pe1 = sprintf("SP_%s_petal_upd_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv", formation, pairs_ct, msgs_ct, iterations_ct, scale, minwid);
+else
+    flo = sprintf("%s_Flood_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv", formation, pairs_ct, msgs_ct, iterations_ct, scale, minwid);
+    pe = sprintf("%s_petal_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv",formation, pairs_ct, msgs_ct, iterations_ct, scale, minwid);
+    pe1 = sprintf("%s_petal_upd_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv", formation, pairs_ct, msgs_ct, iterations_ct, scale, minwid);
+end
 res_flooding = csvread(flo);
-pe = sprintf("%s_petal_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv",formation, pairs_ct, msgs_ct, iterations_ct, scale, minwid);
 res_petal = csvread(pe);
-pe1 = sprintf("%s_petal_upd_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv", formation, pairs_ct, msgs_ct, iterations_ct, scale, minwid);
 res_petal_1 = csvread(pe1);
 
 
@@ -59,7 +66,7 @@ hold on;
 errorbar(x, mean(dr2,2), std(dr2,0,2)/sqrt(size(dr2, 2)), 'LineStyle', '-.', 'DisplayName', 'Diverged Transmission Zones');
 title(sprintf("Delivery Rate. %s", subtitle), 'Interpreter', 'latex', 'FontSize', fontsize, 'FontWeight', 'bold');
 xlabel(xlabel_text, 'Interpreter', 'latex', 'FontWeight', 'bold', 'FontSize', fontsize);
-ylabel("Delivery Rate $$(\%)$$", 'Interpreter', 'latex', 'FontSize', fontsize);
+ylabel("Delivery Rate $$(\%)$$", 'Interpreter', 'latex', 'FontSize', fontsize-2);
 ylim([0 110]);
 yticks(0:10:100);
 xlim([0 x(end)+5]);

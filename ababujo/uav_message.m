@@ -7,6 +7,8 @@ classdef uav_message
         timestamp   % timestamp when the message originated
         src         % Source UAV no.
         dest        % Destination UAV no.
+        tid         % Last transmitter ID.
+        tloc        % Last transmitter's location.
         HTL         % Hops to Live, equivalent of TTL in regular IP packets.
         origin_coord  % The x,y,z coordinate of the src UAV when the message was transmitted
         type        % 1= plumeDetected, 2=CoordinateUpdate

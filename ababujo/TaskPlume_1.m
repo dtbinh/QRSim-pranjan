@@ -57,8 +57,8 @@ classdef TaskPlume_1<Task
             %          params - the task parameters
             %
             fprintf("I was called\n");
-            if obj.simState.N4 > 0  % Wordaround to 
-                obj.N4 = obj.simState.N4;
+            if obj.simState.number_of_drones > 0  % Wordaround to dynamically change the number of drones at run time. Used to study network density.
+                obj.N4 = obj.simState.number_of_drones;
             end
             taskparams.dt = 0.2; % task timestep i.e. rate at which controls
             % are supplied and measurements are received
@@ -74,7 +74,7 @@ classdef TaskPlume_1<Task
             %%%%% environment %%%%%
             % these need to follow the conventions of axis(), they are in m, Z down
             % note that the lowest Z limit is the refence for the computation of wind shear and turbulence effects
-            taskparams.environment.area.limits = [-60 60 -60 60 -60 0];
+            taskparams.environment.area.limits = [-60 60 -60 60 -90 0];
             taskparams.environment.area.type = 'BoxWithObstaclesArea';
             
             % originutmcoords is the location of the RVC (our usual flying site)
@@ -90,7 +90,7 @@ classdef TaskPlume_1<Task
             %ababujo:obstacles{Column - X Y Z(h) r}
             % taskparams.environment.area.obstacles = taskparams.environment.area.type.obstacles;
             taskparams.environment.area.obstacles = [ ];
-            taskparams.environment.area.plume = [10 10 30 15]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.
+            taskparams.environment.area.plume = [-30 20 30 0]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.
             %taskparams.environment.area.plume = [10 40 25 13]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.            
             
             % GPS
@@ -140,12 +140,15 @@ classdef TaskPlume_1<Task
         %ababujo: reset() is called initially to iniitialize the positions
         % and in this case the PIDs
         function random_formation(obj)
+            % This is an equivalent function as to
+            % uniform_random_formation. 
+            warning("DEPRECATED. Use uniform_random_formation instead");
             N = obj.N4;
-            x_min = -40;
-            x_max = 40;
-            y_min = -40;
-            y_max = 40;
-            z_min = 5;
+            x_min = -20;
+            x_max = 20;
+            y_min = -20;
+            y_max = 20;
+            z_min = 30;
             z_max = 50;
             for drone=1:N
                 x = x_min + rand() * (x_max - x_min);
@@ -158,12 +161,16 @@ classdef TaskPlume_1<Task
         end
         
         function uniform_random_formation(obj)
+            % Use this to generate random drones in a 3D Volume specified
+            % by the below coordinates.   
+            % Prefer to use the other function.
+          
             N = obj.N4;
-            x_min = -40;
-            x_max = 40;
-            y_min = -40;
-            y_max = 40;
-            z_min = 5;
+            x_min = -30;
+            x_max = 30;
+            y_min = -30;
+            y_max = 30;
+            z_min = 20;
             z_max = 50;
             seed = int32(rand() * 10000);
             P = gallery('uniformdata', N, 3, seed);
@@ -171,9 +178,11 @@ classdef TaskPlume_1<Task
                 x = x_min + P(drone, 1) * (x_max - x_min);
                 y = y_min + P(drone, 2) * (y_max - y_min);
                 z = z_min + P(drone, 3) * (z_max - z_min);
-                %fprintf("\n%f %f %f\n", x, y, -z);               
                 obj.simState.platforms{drone}.setX([x; y; -z; 0;0;0;]);
                 obj.PIDs{drone} = VelocityPID(obj.simState.DT);
+                set_targetX = abs(obj.simState.platforms{drone}.target_velocity(1));
+                rand_target = -set_targetX + 2*set_targetX * rand(3,1);
+                obj.simState.platforms{drone}.target_velocity = rand_target;
             end
         end
 
@@ -193,17 +202,40 @@ classdef TaskPlume_1<Task
                 obj.PIDs{idx} = VelocityPID(obj.simState.DT);
             end
         end
-        
-        function mesh_formation(obj)
+     
+       function mesh_formation(obj)
             N = obj.N4;
-            X = floor(sqrt(N));  % N SHOULD BE A PERFECT SQUARE.
+            X = floor(sqrt(N));  % N BETTER BE A PERFECT SQUARE.
             
-            % For 9 drones, the below will be reasonable
+%             % For 9 drones, the below will be reasonable
 %             Y_seperation = 15;  Z_seperation = 15; Z_base = 0; 
 %             Y_base = 50;    % Y coordinate of Drone #1 X_base = -10;   
             % For 36 drones, the below will be reasonable
-            Y_seperation = 10;  Z_seperation = 10; Z_base = 5; 
+            Y_seperation = 10;  Z_seperation = 10; Z_base = -5; 
             Y_base = 44;    % Y coordinate of Drone #1 
+            X_base = -55;   
+
+            for hor_row = 1:X
+                for ver_col = 1:X
+                    idx = ((hor_row-1) * X + (ver_col-1));
+                    val = [X_base; Y_base - (hor_row -1) * Y_seperation; Z_base - (ver_col-1) * Z_seperation; 0; 0; 0];
+                    obj.simState.platforms{idx+1}.setX(val);
+                    obj.PIDs{idx+1} = VelocityPID(obj.simState.DT);
+                end
+            end
+        end
+ 
+        
+        function mesh_formation1(obj)
+            N = obj.N4;
+            X = floor(sqrt(N));  % N BETTER BE A PERFECT SQUARE.
+            
+            % For 9 drones, the below will be reasonable
+            Y_seperation = 15;  Z_seperation = 15; Z_base = 0; 
+            Y_base = 50;    % Y coordinate of Drone #1 X_base = -10;   
+            % For 36 drones, the below will be reasonable
+%             Y_seperation = 10;  Z_seperation = 10; Z_base = 5; 
+%             Y_base = 44;    % Y coordinate of Drone #1 
             X_base = -10;   
 
             for i = 1:X
@@ -263,9 +295,20 @@ classdef TaskPlume_1<Task
             acc_mag = force / mass;
         end
         
+        function UU = step(obj, U)
+            obj.time = obj.time +1;
+            N = obj.N4;
+            UU = zeros(5, N);
+            for me= 1:N
+                target_vel = obj.simState.platforms{me}.target_velocity;
+                %target_vel = target_vel + [2; 0;0];
+                UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(), target_vel ,0);
+            end
+        end
+        
         % in step(), the drone takes a step based on its relative position
         % with each other and also to other dronee, obstacles, etc..
-        function UU = step(obj,U)
+        function UU = step1(obj,U)
             obj.time = obj.time +1;
             
             N = obj.N4;
@@ -273,9 +316,6 @@ classdef TaskPlume_1<Task
             % ob = obj.simState.platforms{i}.ObDetect();
             for me = 1: N
                 ob = obj.simState.platforms{me}.PlumeDetect(me);
-                % Check the message queue for any messages.
-                obj.simState.platforms{me}.read_message(me);  
-                %with the current broadcast message implementation.
                 if(ob ==1 || obj.simState.platforms{me}.isValid() == 0) % If a UAV detects a plume, or it collided with another drone, it stops
                     UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(),[0;0;0],0);
                 else
@@ -287,9 +327,10 @@ classdef TaskPlume_1<Task
                         c_ct = 0;
                         for peer=1:N
                             if me ~= peer && obj.simState.platforms{peer}.isValid() == 1
-                                peer_coord = obj.simState.platforms{me}.uav_coord(:,peer);
+                                peer_data = obj.simState.platforms{me}.location_table(peer);
+                                peer_coord = peer_data{1};
                                 if norm(peer_coord) ~= 0
-                                    m_dst = pdist([my_coord';peer_coord'], 'euclidean');
+                                    m_dst = norm(my_coord - peer_coord); % 'euclidean' dist
                                     c_acc_mag = obj.get_acceleration_mag(m_dst, me, peer);
                                     if c_acc_mag ~= 0
                                         dir_vec = (peer_coord - my_coord);
@@ -306,9 +347,12 @@ classdef TaskPlume_1<Task
                     end
                     res_acc_vec = c_acc_vec;
                     if norm(res_acc_vec) ~= 0
-                        %if me == 1 || me == 3
-                            %quiver3(my_coord(1),my_coord(2),my_coord(3), res_acc_vec(1), res_acc_vec(2), res_acc_vec(3));
-                        %end
+                        draw_force_vector = 0;
+                        if draw_force_vector == 1
+                        % the below line shall draw force vectors on
+                        % the UI.
+                            quiver3(my_coord(1),my_coord(2),my_coord(3), res_acc_vec(1), res_acc_vec(2), res_acc_vec(3));
+                        end
                         vel_vec_initial = obj.simState.platforms{me}.getX(7:9);
                         vel_vec_target = vel_vec_initial + res_acc_vec * obj.simState.task.dt;
                         obj.simState.platforms{me}.target_velocity = vel_vec_target;

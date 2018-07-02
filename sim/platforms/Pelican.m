@@ -75,6 +75,7 @@ classdef Pelican<Steppable & Platform
         distances = [];      % pranjan. Ideal distance to other drones.
         elasticity = 0.1;     % pranjan. Explanation coming soon....
         target_velocity = [2;0;0];  % pranjan. Initial velocities of the drones.
+        location_table;     % Map UAV_ID -> {location, timestamp}
     end
     properties (Access = protected)
         gpsreceiver; % handle to the gps receiver
@@ -139,10 +140,12 @@ classdef Pelican<Steppable & Platform
             obj.duplicates = containers.Map();
             %obj.transmitter_strength = 20;  % pranjan TODO: Initialize it through objparams.
             obj.uav_coord = zeros(3, obj.simState.task.N4);
+            obj.location_table = containers.Map('KeyType', 'uint32', 'ValueType', 'any');
             obj.plume_coord = zeros(3, obj.simState.task.N4);
             obj.peer_contact_time = datetime(zeros(1,obj.simState.task.N4), 0, 0);
             for idx = 1: obj.simState.task.N4
                 obj.peer_contact_time(idx) = datetime('now');
+                obj.location_table(idx) = {[0,0,0]', datetime('now')};
             end
             
             if(isfield(objparams,'behaviourIfStateNotValid'))
@@ -352,8 +355,8 @@ classdef Pelican<Steppable & Platform
         end
         
         function p = get_message_reception_probability(obj, T, D, F, Dth)
-            sigma = 2;     % Standard deviation for the gaussian random variable N
-            mmean = -20;       % Mean for the gaussian radom variable N
+            sigma = obj.simState.radio_propagation_cons_sigma;
+            mmean = obj.simState.radio_propagation_cons_mean;
             RecPower = obj.get_rec_power(T, D, F, mmean, sigma);
             if RecPower  > Dth
                 p = 1;
@@ -387,8 +390,14 @@ classdef Pelican<Steppable & Platform
             
             t_ub_1 = T_ub * (msg.src_dst_dist - p) /msg.src_dst_dist;
             
-            u1 = msg.dloc - msg.tloc;
-            AP1 = pt - msg.tloc;
+            if msg.can_update == 1 
+                % Diverged transmission zone, t_ub_1 should be calculated using tloc.
+                u1 = msg.dloc - msg.tloc;
+                AP1 = pt - msg.tloc;
+            else  % For single transmission zones use sloc for both the calculations.
+                u1 = msg.dloc - msg.sloc;
+                AP1 = pt - msg.sloc;
+            end
             distance_from_new_line = norm(cross(AP1, u1)) / norm(u1);
             tr_dst_distance = norm(u1);
             
@@ -398,6 +407,7 @@ classdef Pelican<Steppable & Platform
         
         function success = send_one_hop_message(obj, msg, transmitter, dest, T_ub, boff_type)
             if dest ~= transmitter && dest ~= msg.src && isKey(obj.simState.platforms{dest}.tr_msgs, msg.id) == 0
+                UTC = datetime(1970,1,1,0,0,0);  % UNIX Epoch
                 % the message has not been already transmitted by the destination.
                 dest_coord = obj.simState.platforms{dest}.getX(1:3);
                 transmitter_coord = obj.simState.platforms{transmitter}.getX(1:3);
@@ -442,25 +452,47 @@ classdef Pelican<Steppable & Platform
                         otherwise
                             msg.boff_time = msg.timestamp;
                     end
+                    msg.tloc = obj.simState.platforms{transmitter}.getX(1:3);
+                    msg.tid = transmitter;
                     if msg.can_update == 1 && msg.src ~= transmitter
-                        msg.tloc = obj.simState.platforms{transmitter}.getX(1:3);
+                        temp_data = obj.location_table(msg.dest);
+                        table_ts = temp_data{2};
+                        if isbetween(msg.dloc_ts, msg.timestamp, table_ts) %  dloc in the message is older than the table data.
+                            msg.dloc = temp_data{1};
+                            msg.dloc_ts = table_ts;
+                        end
                         tra_dest_dist = norm(msg.tloc - msg.dloc) * obj.simState.dist_scale;
                         petal_width = msg.petal_width_percent * tra_dest_dist / 100;
                         msg.minor_axis = max(petal_width, msg.min_width);
-                        D = tra_dest_dist / 2;
-                        msg.major_axis = sqrt(power(D,2) + power(msg.minor_axis, 2));
+                        D = tra_dest_dist;
+                        msg.major_axis = sqrt(power(D/2,2) + power(msg.minor_axis, 2));
                     end
                     obj.simState.platforms{dest}.messages(msg.id) = msg;
                 end
             end
         end
         
+        function transmit_location_table(obj, self)
+            % Creates a uav_message class and sends to every node in its
+            % radio range.
+            data = obj.location_table;
+            type = 2; % location update
+            dest = 0; % means everybody
+            HTL = 1; % only once 
+            msg = uav_message(obj.simState, self, dest, HTL, data, type, 0);
+            for dest = 1:obj.simState.task.N4
+                status = obj.send_message(msg, self, dest);
+            end
+            obj.location_table(self) = {obj.getX(1:3), datetime('now')};
+        end
+        
         function success = send_message(obj, msg, transmitter, dest)
+            success = 0;
             if transmitter ~= dest && msg.HTL > 0
                 msg.HTL = msg.HTL - 1;
-                dest_coord = obj.simState.platforms{dest}.getX(1:3);
+                dest_coord = obj.simState.platforms{dest}.getX(1:3); % This calculation is being done on behalf of the "medium" hence the data should be fetched from simulation object.
                 transmitter_coord = obj.simState.platforms{transmitter}.getX(1:3);
-                D = pdist([transmitter_coord'; dest_coord'], 'euclidean'); % Eucledian Distance
+                D = norm(transmitter_coord - dest_coord); % Eucledian Distance
                 D = D * obj.simState.dist_scale; % Scale D
                 T = obj.simState.platforms{transmitter}.transmitter_strength; % Souce Transmission strength.
                 Dth = obj.simState.platforms{dest}.receiver_threshold;
@@ -470,9 +502,7 @@ classdef Pelican<Steppable & Platform
                 else
                     reception_probability = 1;
                 end
-                if reception_probability < 0.5
-                    success = 0;
-                else
+                if reception_probability > 0.5
                     success = 1;
                     % Deliver the message in the in_msg_queue of destination.
                     obj.simState.platforms{dest}.in_msg_queue = [obj.simState.platforms{dest}.in_msg_queue, msg];
@@ -481,6 +511,7 @@ classdef Pelican<Steppable & Platform
         end
         
         function out_message = read_plume_detected_message(obj, uav_no)
+            warning("DEPRECATED - DO NOT CALL this method");
             out_message = [];
             if obj.simState.send_plume_detected == 1
                 if ~isempty(obj.in_msg_queue)
@@ -490,30 +521,42 @@ classdef Pelican<Steppable & Platform
             end
         end
         
-        function out = read_message(obj, uav_no)
-            % % Method: Reads all the messages from the in-queue.
-            
+        
+        function out = update_location_table(obj, self)
+            % Method: Reads location table updates from in_msg_queue and 
+            %         updates the location table.
+            %
             % Iterate over each message in the queue.
             % If the message is a plume detected message append it to
-            % out_message queue.
-            % if the message is a coordinate update message then update the
-            % coordinates in uav_coord field.
-            nrows = length(obj.simState.platforms{uav_no}.in_msg_queue);
+            % out_message queue.- DEPRECATED
+            % if the message is a location table update then update the
+            % location table.
             out = [0,0];
-            for i=1:nrows
-                msg = obj.simState.platforms{uav_no}.in_msg_queue(i);
-                if msg.type == 2  % Coordinate update
-                    %last_contact_time = obj.simState.platforms{uav_no}.peer_contact_time(msg.src);
-                    %if last_contact_time <= msg.timestamp
-                    obj.simState.platforms{uav_no}.uav_coord(:,msg.src) = msg.origin_coord;
-                    out(2) = out(2) + 1;
-                    %end
-                elseif msg.type == 1  % Plume detected message
-                    obj.simState.platforms{uav_no}.plume_coord(:,msg.src) = msg.origin_coord;
-                    out(1) = out(1) + 1;
+            UTC = datetime(1970,1,1,0,0,0);  % UNIX Epoch
+            for msg = obj.in_msg_queue
+                switch msg.type
+                    case 2 % Location table update
+                        src_id = msg.src;
+                        nodes = keys(msg.data);
+                        val_data = values(msg.data);
+                        for i = 1: length(msg.data)
+                            peer = nodes{i};
+                            if peer == self; continue; end
+                            data = val_data{i};
+                            peer_loc = data{1};
+                            if norm(peer_loc) ~= 0
+                                peer_ts = data{2};
+                                lt_entry = obj.location_table(peer);
+                                if isbetween(lt_entry{2}, UTC, peer_ts) % The date in loc table is between epoch and TS in msg. i.e. msg has newer TS.
+                                    obj.location_table(peer) = {peer_loc, peer_ts};
+                                end
+                            end
+                        end
+                    otherwise
+                        warning("INVALID msg.type");
                 end
             end
-            obj.simState.platforms{uav_no}.in_msg_queue = [];
+            obj.in_msg_queue = [];  % Empty the message queue.
         end
         
         function ob = PlumeDetect(obj, uav_no)
@@ -535,7 +578,7 @@ classdef Pelican<Steppable & Platform
                 if obj.simState.send_plume_detected == 0  % If drones don't send plume detected message.
                     return
                 end
-                
+                warning("DEPRECATED - CODE SHOULD NOT REACH HERE. Plume DETECTED Messages are no longer supported");
                 %velocity = obj.getX(7:9);
                 
                 if ~isempty(obj.out_msg_queue) && ~obj.simState.repeat_plume_msg
