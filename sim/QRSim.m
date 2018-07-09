@@ -243,10 +243,6 @@ classdef QRSim<handle
             mark_pt_ct = 0;
             hop_count = 0;
             end_to_end_delay = datetime('now') - UTC;
-            if mark_points == 1
-                draw_spheroid(msg.tloc', msg.dloc', msg.minor_axis/(2 * obj.simState.dist_scale));
-                mark_pt_ct = mark_pt_ct + 1;
-            end
 
             for dest= 1: obj.simState.task.N4
                 obj.simState.platforms{transmitter}.send_one_hop_message(msg, transmitter, dest, T_ub, boff_type);
@@ -279,7 +275,7 @@ classdef QRSim<handle
                                     redundancy_count = redundancy_count + 1;
                                     hop_count = r_msg.hop_count;
                                     end_to_end_delay = datetime('now') - r_msg.timestamp;
-                                    if mark_points == 1
+                                    if mark_points == 5
                                         %line([r_msg.tloc(1), my_coord(1)], [r_msg.tloc(2), my_coord(2)], [r_msg.tloc(3), my_coord(3)], 'Color','red');
                                         text(my_coord(1), my_coord(2), my_coord(3)-1, "\otimes", 'Fontsize', 20);
                                         mark_pt_ct = mark_pt_ct + 1;
@@ -306,7 +302,7 @@ classdef QRSim<handle
                                         % hence transmit.
                                         r_msg.hop_count = r_msg.hop_count + 1;
                                         if r_msg.can_update == 1 && mark_points == 1 && norm(r_msg.sloc - r_msg.tloc) > 0
-                                            draw_spheroid(r_msg.tloc', r_msg.dloc', r_msg.minor_axis/(2 * obj.simState.dist_scale));
+                                            draw_spheroid(r_msg.tloc', r_msg.dloc', r_msg.minor_axis/(obj.simState.dist_scale));
                                         end
                                         for dest= 1:obj.simState.task.N4
                                             obj.simState.platforms{drone}.send_one_hop_message(r_msg, drone, dest, T_ub, boff_type);
@@ -322,6 +318,7 @@ classdef QRSim<handle
                                     elseif mark_points == 1
                                             % Centroid is closer to the
                                             % destination. Don't transmit.
+                                            % Back-off
                                             scatter3(my_coord(1), my_coord(2), my_coord(3)-2, 60, 'green', 'filled');
                                             mark_pt_ct = mark_pt_ct + 1;
                                     end
@@ -347,6 +344,11 @@ classdef QRSim<handle
         function scat_ct = app_unicast_petal_routing(obj, src, dest, petal_width, data, mark_points, update_petal, boff_type, T_ub, radius, min_width_per)
             msg = geo_message(obj.simState, src, dest, petal_width, data, mark_points, update_petal, radius, min_width_per);
             [scat_ct, tr_ct, success, hop_count, end_to_end_delay]  = obj.petal_send_message(msg, src, mark_points, boff_type, T_ub);
+            if mark_points == 1
+                scat_ct = scat_ct + 1;
+                draw_spheroid(msg.tloc', msg.dloc', msg.minor_axis/(obj.simState.dist_scale));                
+            end
+
             fprintf("\n[scat_ct= %d, tr_ct= %d, success= %d, hop_count= %f, end_to_end_delay= %f]\n", scat_ct, tr_ct, success, hop_count, seconds(end_to_end_delay));
         end
         
@@ -390,12 +392,16 @@ classdef QRSim<handle
                     if isKey(obj.simState.platforms{drone}.messages, msg.id)
                         r_msg = obj.simState.platforms{drone}.messages(msg.id);
                         if drone == msg.dest
-                            success = 1;
                             redundancy_count = redundancy_count + 1;
                             hop_count = r_msg.hop_count;
+                            if mark_points == 1 && success == 0
+                                my_coord = obj.simState.platforms{drone}.getX(1:3);
+                                text(my_coord(1), my_coord(2), my_coord(3), "\otimes", 'Fontsize', 20);
+                            end
                             if redundancy_count == 1
                                 end_to_end_delay = datetime('now') - r_msg.timestamp;
                             end
+                            success = 1;
                         elseif r_msg.HTL > 0
                             done = done && 0;
                             r_msg.hop_count = r_msg.hop_count + 1;

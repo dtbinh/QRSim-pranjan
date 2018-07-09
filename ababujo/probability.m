@@ -44,13 +44,13 @@ function x = probability()
                 arrr(i) = 0;
             end
         end
-        arrrs(j) = 1000-sum(arrr);
+        arrrs(j) = (1000-sum(arrr))/10;
     end
     plot(dsts, arrrs);
     grid on;
     hold on;
-    text(200, 100, ['T= ', num2str(T) , ' dBm, F= ',  num2str(F),  ' MHz,  $$\sigma$$= ',  num2str(sigma)], 'FontSize', fontsize, 'Interpreter', 'latex');
-    ylabel("Lost packets count", 'FontSize', fontsize, 'Interpreter', 'latex');
+    text(150, 20, ['T= ', num2str(T) , ' dBm, F= ',  num2str(F),  ' MHz,  $$\sigma$$= ',  num2str(sigma)], 'FontSize', fontsize, 'Interpreter', 'latex');
+    ylabel("Packet loss ($\%$)", 'FontSize', fontsize, 'Interpreter', 'latex');
     xlabel("Distance (m)", 'FontSize', fontsize, 'Interpreter', 'latex');
     set(gca, 'FontSize', fontsize)
     title_1 = sprintf("Packet loss vs Distance");

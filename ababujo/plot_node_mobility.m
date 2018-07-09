@@ -1,29 +1,28 @@
 clear all;
 
 global single_figure;
-single_figure = 1;
-speed_effects_graph = 1;
+single_figure = 0;
 
-formation = "spherical"; % random spherical
+formation = "random"; % random spherical
 pairs_ct = 1;
-msgs_ct = 1000;
-iterations_ct = 1;
-scale = 8;
+msgs_ct = 300;
+iterations_ct = 30;
+scale = 7;
 minwid = 2;
-HTLs = 1:1:11;
-petal_sizes = 5:10:105;
+HTLs = 1:1:9;
+petal_sizes = 5:10:94;
 % Make sure that the above variables match from main_plume
 
-flo = sprintf("%s_Flood_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv", formation, pairs_ct, msgs_ct, iterations_ct, scale, minwid);
-pe = sprintf("%s_petal_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv",formation, pairs_ct, msgs_ct, iterations_ct, scale, minwid);
-pe1 = sprintf("%s_petal_upd_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv", formation, pairs_ct, msgs_ct, iterations_ct, scale, minwid);
+flo = sprintf("SP_%s_Flood_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv", formation, pairs_ct, msgs_ct, iterations_ct, scale, minwid);
+pe = sprintf("SP_%s_petal_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv", formation, pairs_ct, msgs_ct, iterations_ct, scale, minwid);
+pe1 = sprintf("SP_%s_petal_upd_%d-Pair_%d-Msg_%d-iters_%d-scale_%d-minwid.csv", formation, pairs_ct, msgs_ct, iterations_ct, scale, minwid);
 res_flooding = csvread(flo);
 res_petal = csvread(pe);
 res_petal_1 = csvread(pe1);
 
 
 plot_graph_flooding(res_flooding, HTLs, pairs_ct, iterations_ct, formation, msgs_ct, scale, minwid);
-plot_graph_petals(res_petal, res_petal_1, petal_sizes, pairs_ct, iterations_ct, formation, msgs_ct, scale, minwid);
+plot_graph_petals(res_petal_1, res_petal, petal_sizes, pairs_ct, iterations_ct, formation, msgs_ct, scale, minwid);
 
 
 function plot_graph_petals(petal_results, petal_up_results, petal_sizes, pair_ct, iterations_ct, formation, msgs_ct, scale, ~)
@@ -35,7 +34,7 @@ fontsize = 14;
 leg_font_size = 13;
 
 avg_dist = mean(petal_results(:, 3)) * scale;
-subtitle = sprintf("Type= %s, Iterations= %d \n Node pairs= %d, Avg Distance = %d m, Packets= %d", formation, iterations_ct, pair_ct, ceil(avg_dist), msgs_ct);
+subtitle = sprintf("Type= %s, Time Steps= %d \n Node pairs= %d, Avg Distance = %d m, Packets= %d", formation, iterations_ct, pair_ct, ceil(avg_dist), msgs_ct);
 fig_name = sprintf("Petal Routing %s Iter-%d, Pairs= %d, Pkts=%d", formation, iterations_ct, pair_ct, msgs_ct);
 table_size = size(petal_results, 1);
 if single_figure == 1
@@ -68,7 +67,7 @@ xticks([0, x])
 lgd = legend('Location','southeast');
 lgd.FontSize = leg_font_size;
 grid on
-fname = sprintf("pe_DR_%s.png", formation);
+fname = sprintf("mob_pe_DR_%s.png", formation);
 if single_figure == 0
     saveas(mfig, fname);
 end
@@ -98,7 +97,7 @@ xticks([0, x]);
 xlim([0 x(end)+5]);
 leg = legend();
 leg.FontSize = leg_font_size;
-fname = sprintf("pe_delay_%s.png", formation);
+fname = sprintf("mob_pe_delay_%s.png", formation);
 if single_figure == 0
     saveas(mfig, fname);
 end
@@ -127,7 +126,7 @@ xlim([0 x(end)+5]);
 leg = legend();
 leg.FontSize = leg_font_size;
 grid on;
-fname= sprintf("pe_hops_%s.png", formation);
+fname= sprintf("mob_pe_hops_%s.png", formation);
 if single_figure == 0
     saveas(mfig, fname);
 end
@@ -158,13 +157,13 @@ xlim([0 x(end)+5]);
 xticks([0 x]);
 leg = legend();
 leg.FontSize = leg_font_size;
-fname = sprintf("pe_trans_%s.png", formation);
+fname = sprintf("mob_pe_trans_%s.png", formation);
 if single_figure == 0
     saveas(mfig, fname);
 end
 
 if single_figure == 1
-    fname = sprintf("Petal_%s_Iter-%d_Pairs_%d_Pkts_%d_Scale_%d.png", formation, iterations_ct, pair_ct, msgs_ct, scale);
+    fname = sprintf("mob_Petal_%s_Iter-%d_Pairs_%d_Pkts_%d_Scale_%d.png", formation, iterations_ct, pair_ct, msgs_ct, scale);
     saveas(FigH, fname);
 end
 end
@@ -188,7 +187,7 @@ if single_figure == 1
 end
 xlabel_text = "Hops to Live";
 avg_dist = mean(results(:, 3)) * scale;
-subtitle = sprintf("Type= %s, Iterations= %d, \nNode pairs= %d, Avg Distance = %d m, Packets= %d", formation, iterations_ct, pair_ct, ceil(avg_dist), msgs_ct);
+subtitle = sprintf("Type= %s, Time steps= %d, \nNode pairs= %d, Avg Distance = %d m, Packets= %d", formation, iterations_ct, pair_ct, ceil(avg_dist), msgs_ct);
 
 if single_figure == 1
     subplot(2,2,1);
@@ -210,7 +209,7 @@ xticks([0, x]);
 leg = legend('Location','southeast');
 leg.FontSize = leg_font_size;
 grid on
-fname = sprintf("fl_DR_%s.png", formation);
+fname = sprintf("mob_fl_DR_%s.png", formation);
 if single_figure == 0
     saveas(mfig, fname);
 end
@@ -242,7 +241,7 @@ xticks([0, x]);
 xlim([0 x(end)+1]);
 leg = legend();
 leg.FontSize = leg_font_size;
-fname = sprintf("fl_delay_%s.png", formation);
+fname = sprintf("mob_fl_delay_%s.png", formation);
 if single_figure == 0
     saveas(mfig, fname);
 end
@@ -270,7 +269,7 @@ xlim([0 x(end)+1]);
 leg = legend();
 leg.FontSize = leg_font_size;
 grid on
-fname = sprintf("fl_hops_%s.png", formation);
+fname = sprintf("mob_fl_hops_%s.png", formation);
 if single_figure == 0
     saveas(mfig, fname);
 end
@@ -296,7 +295,7 @@ xlim([0 x(end)+1]);
 xticks([0 x])
 leg = legend();
 leg.FontSize = leg_font_size;
-fname = sprintf("fl_trans_%s.png", formation);
+fname = sprintf("mob_fl_trans_%s.png", formation);
 if single_figure == 0
     saveas(mfig, fname);
 end
@@ -304,7 +303,7 @@ end
 
 
 if single_figure == 1
-    fnam = sprintf("Flooding%s_Iter%d_Pairs%d_Pkts%d_scale_%d.png", formation, iterations_ct, pair_ct, msgs_ct, scale);
+    fnam = sprintf("mob_Flooding%s_Iter%d_Pairs%d_Pkts%d_scale_%d.png", formation, iterations_ct, pair_ct, msgs_ct, scale);
     saveas(FigH, fnam);
 end
 end
