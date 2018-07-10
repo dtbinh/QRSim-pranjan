@@ -29,7 +29,7 @@ global single_figure;
 fontsize = 14;
 leg_font_size = 13;
 x = drone_ct_arr;
-xlabel_text = "Number of UAVs. Critical = 43";
+xlabel_text = "Number of UAVs. Ideal UAV Count = 43";
 if single_figure == 1
     FigH = figure('Position', get(0, 'Screensize'), 'Name', "Network Density", 'NumberTitle','off');
 end
@@ -45,7 +45,7 @@ for i = 1: jump_ct: size(results_pe, 1)
     dr_pe_up(idx, :) = results_pe_up(i:1:i+jump_ct-1, 5);
     dr_fl(idx, :) = results_flooding(i:1:i+jump_ct-1, 5);
 end
-subtitle = sprintf("Petal width = 35, Flooding HTL = 10 \n Iterations= %d, Packets= %d, Node pairs= %d", iter_ct, number_of_msgs, pair_ct);
+subtitle = sprintf("Zone width = 35, Flooding HTL = 10 \n Iterations= %d, Packets= %d, Node pairs= %d", iter_ct, number_of_msgs, pair_ct);
 
 if single_figure == 1
     subplot(2,2,1);
@@ -54,11 +54,11 @@ else
 end
 hold on;
 errorbar(x, mean(dr_pe,2), std(dr_pe, 0, 2)/sqrt(size(dr_pe, 2)), 'LineStyle', "-.", 'DisplayName', 'Single Transmission Zone');
-errorbar(x, mean(dr_pe_up,2), std(dr_pe_up, 0, 2)/sqrt(size(dr_pe_up, 2)), 'LineStyle', '--', 'DisplayName', 'Diverged Transmission Zone');
+errorbar(x, mean(dr_pe_up,2), std(dr_pe_up, 0, 2)/sqrt(size(dr_pe_up, 2)), 'LineStyle', '--', 'DisplayName', 'Diverged Transmission Zones');
 errorbar(x, mean(dr_fl,2), std(dr_fl,0,2)/sqrt(size(dr_fl,2)), 'LineStyle', ':', 'DisplayName', 'Flooding', 'LineWidth', 2);
-title(sprintf("Delivery Rate. %s", subtitle), 'FontSize', fontsize);
+title(sprintf("Delivery ratio. %s", subtitle), 'FontSize', fontsize);
 xlabel(xlabel_text, 'FontSize', fontsize, 'Interpreter', 'latex');
-ylabel("Delivery Rate $$(\%)$$", 'FontSize', fontsize, 'Interpreter', 'latex');
+ylabel("Delivery ratio $$(\%)$$", 'FontSize', fontsize, 'Interpreter', 'latex');
 ylim([0 110]);
 yticks(0:10:100)
 xticks(x)
@@ -88,9 +88,9 @@ for i = 1: jump_ct: size(results_pe, 1)
     tot_delay_fl(idx, :) = results_flooding(i:1:i+jump_ct-1, 9);
 end
 hold on;
-errorbar(x, mean(delay,2), std(delay, 0, 2)/sqrt(size(delay, 2)), 'LineStyle', "-.", 'DisplayName', 'Single Transmission Zone');
-errorbar(x, mean(delay_up,2), std(delay_up, 0, 2)/sqrt(size(delay_up, 2)), 'LineStyle', '--', 'DisplayName', 'Diverged Transmission Zone');
-errorbar(x, mean(delay_fl,2), std(delay_fl,0,2)/sqrt(size(delay_fl,2)), 'LineStyle', ':', 'DisplayName', 'Flooding', 'LineWidth', 2);
+errorbar(x, mean(delay,2), std(delay, 0, 2)/sqrt(size(delay, 2)), 'LineStyle', "-.", 'DisplayName', 'Total Delay - Single Transmission Zone');
+errorbar(x, mean(delay_up,2), std(delay_up, 0, 2)/sqrt(size(delay_up, 2)), 'LineStyle', '--', 'DisplayName', 'Total Delay - Diverged Transmission Zones');
+errorbar(x, mean(delay_fl,2), std(delay_fl,0,2)/sqrt(size(delay_fl,2)), 'LineStyle', ':', 'DisplayName', 'End-to-end delay Flooding', 'LineWidth', 2);
 errorbar(x, mean(tot_delay_fl,2), std(tot_delay_fl,0,2)/sqrt(size(tot_delay_fl,2)), 'LineStyle', '-', 'DisplayName', 'Total delay Flooding');
 
 grid on
@@ -102,7 +102,7 @@ ylabel("Delay (seconds)", 'FontSize', fontsize, 'Interpreter', 'latex');
 xticks(x)
 xlim([10 x(end)+5])
 leg = legend('Location','northwest');
-leg.FontSize = leg_font_size;
+leg.FontSize = leg_font_size-2;
 if single_figure == 0
     saveas(mfig, "ND_delay.png");
 end
@@ -166,9 +166,8 @@ errorbar(x, mean(overhead_fl,2), std(overhead_fl,0,2)/sqrt(size(overhead_fl,2)),
 grid on
 title(sprintf("Transmissions Count. %s", subtitle), 'FontSize', fontsize);
 xlabel(xlabel_text, 'FontSize', fontsize, 'Interpreter', 'latex');
-ylabel("Average number of tries per successful delivery", 'FontSize', fontsize);
-%ylim([0 100]);
-%yticks(0:10:100);
+ylabeltext = sprintf("Average number of transmissions \n per successful packet delivery");
+ylabel(ylabeltext, 'FontSize', fontsize);
 xticks(x)
 xlim([10 x(end)+5])
 leg = legend('Location','northwest');
