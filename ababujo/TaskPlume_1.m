@@ -34,7 +34,7 @@ classdef TaskPlume_1<Task
         time =0;
         vt; % to store target velocities
         furthest_pairs;     % pranjan:
-        formation_type = "random"; 
+        formation_type = "spherical"; 
         number_of_pairs = 1;  
         % pranjan: made N4 a non constant variable to change the number of drones at run time.
         N4 = 36;       % drones when sensing another drone carries straight on assuming the other drones would change its route
@@ -90,7 +90,7 @@ classdef TaskPlume_1<Task
             %ababujo:obstacles{Column - X Y Z(h) r}
             % taskparams.environment.area.obstacles = taskparams.environment.area.type.obstacles;
             taskparams.environment.area.obstacles = [ ];
-            taskparams.environment.area.plume = [-30 20 30 0]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.
+            taskparams.environment.area.plume = [10 10 30 25]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.
             %taskparams.environment.area.plume = [10 40 25 13]';  % x,y,z of center and radius.This value shall override the value in BoxWithObstaclesArea file.            
             
             % GPS
@@ -278,7 +278,10 @@ classdef TaskPlume_1<Task
 %             [~, idx] = unique(src_dst_pairs(:, 3));
 %             src_dst_pairs = src_dst_pairs(idx, :);
             src_dst_pairs = sortrows(src_dst_pairs, 3, 'descend');  
-            obj.furthest_pairs = src_dst_pairs(1:obj.number_of_pairs, :);
+            mmd = floor(size(src_dst_pairs, 1)/2);
+            obj.furthest_pairs = src_dst_pairs(mmd, :);
+
+%            obj.furthest_pairs = src_dst_pairs(1:obj.number_of_pairs, :);
         end
   
 
