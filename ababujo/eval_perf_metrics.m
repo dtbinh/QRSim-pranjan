@@ -36,8 +36,8 @@ for i=1:1
     if evaluate_performance == 1
         
         mark_points = 0;
-        number_of_iterations = 30;
-        number_of_msgs = 500;
+        number_of_iterations = 15;
+        number_of_msgs = 250;
         petal_sizes = 5:10:105;
         min_petal_wid = 2;
         HTLs = 1:1:11;  % HTL array.  Make sure the length of petal_sizes and HTLs is equal.

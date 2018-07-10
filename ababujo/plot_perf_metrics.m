@@ -1,14 +1,13 @@
 clear all;
 
 global single_figure;
-single_figure = 1;
-speed_effects_graph = 1;
+single_figure = 0;
 
-formation = "spherical"; % random spherical
+formation = "random"; % random spherical
 pairs_ct = 1;
-msgs_ct = 1000;
-iterations_ct = 1;
-scale = 8;
+msgs_ct = 250;
+iterations_ct = 15;
+scale = 6;
 minwid = 2;
 HTLs = 1:1:11;
 petal_sizes = 5:10:105;
@@ -36,12 +35,14 @@ leg_font_size = 13;
 
 avg_dist = mean(petal_results(:, 3)) * scale;
 subtitle = sprintf("Type= %s, Iterations= %d \n Node pairs= %d, Avg Distance = %d m, Packets= %d", formation, iterations_ct, pair_ct, ceil(avg_dist), msgs_ct);
+%subtitle = sprintf("Type= %s, Iterations= %d \n Node pairs= %d, Avg Distance = %d m, Packets= %d", formation, 15, 5, ceil(avg_dist), 250);
+
 fig_name = sprintf("Petal Routing %s Iter-%d, Pairs= %d, Pkts=%d", formation, iterations_ct, pair_ct, msgs_ct);
 table_size = size(petal_results, 1);
 if single_figure == 1
     FigH = figure('Position', get(0, 'Screensize'),'Name', fig_name, 'NumberTitle', 'off');
 end
-xlabel_text = "Petal-width $$(\%)$$";
+xlabel_text = "Zone-width $$(\%)$$";
 
 if single_figure == 1
     subplot(2,2,1);
@@ -58,9 +59,9 @@ end
 errorbar(x, mean(dr1,2), std(dr1,0,2)/sqrt(size(dr1, 2)), 'LineStyle', '--', 'DisplayName', "Single Transmission Zone");
 hold on;
 errorbar(x, mean(dr2,2), std(dr2,0,2)/sqrt(size(dr2, 2)), 'LineStyle', '-.', 'DisplayName', 'Diverged Transmission Zones');
-title(sprintf("Delivery Rate. %s", subtitle), 'Interpreter', 'latex', 'FontSize', fontsize, 'FontWeight', 'bold');
+title(sprintf("Delivery ratio. %s", subtitle), 'Interpreter', 'latex', 'FontSize', fontsize, 'FontWeight', 'bold');
 xlabel(xlabel_text, 'Interpreter', 'latex', 'FontWeight', 'bold', 'FontSize', fontsize);
-ylabel("Delivery Rate $$(\%)$$", 'Interpreter', 'latex', 'FontSize', fontsize-2);
+ylabel("Delivery ratio $$(\%)$$", 'Interpreter', 'latex', 'FontSize', fontsize);
 ylim([0 110]);
 yticks(0:10:100);
 xlim([0 x(end)+5]);
@@ -152,7 +153,8 @@ set(gca,'YScale','log');
 grid on
 title(sprintf("Overhead. %s", subtitle), 'Interpreter', 'latex', 'FontSize', fontsize);
 xlabel(xlabel_text, 'Interpreter', 'latex', 'FontSize', fontsize);
-ylabel("Average number of tries per successful delivery", 'Interpreter', 'latex', 'FontSize', fontsize);
+ylabeltext = sprintf("Average number of transmissions \n per successful packet delivery");
+ylabel(ylabeltext, 'Interpreter', 'latex', 'FontSize', fontsize);
 %yticks(0:10:100);
 xlim([0 x(end)+5]);
 xticks([0 x]);
@@ -186,9 +188,10 @@ fig_name = sprintf("Flooding, %s Iter-%d, Pairs= %d, Pkts=%d", formation, iterat
 if single_figure == 1
     FigH = figure('Position', get(0, 'Screensize'), 'Name', fig_name, 'NumberTitle','off');
 end
-xlabel_text = "Hops to Live";
+xlabel_text = "Hops To Live";
 avg_dist = mean(results(:, 3)) * scale;
 subtitle = sprintf("Type= %s, Iterations= %d, \nNode pairs= %d, Avg Distance = %d m, Packets= %d", formation, iterations_ct, pair_ct, ceil(avg_dist), msgs_ct);
+%subtitle = sprintf("Type= %s, Iterations= %d, \nNode pairs= %d, Avg Distance = %d m, Packets= %d", formation, 15, 5, ceil(avg_dist), 250);
 
 if single_figure == 1
     subplot(2,2,1);
@@ -199,10 +202,10 @@ y = zeros(no_of_rows, no_of_cols);
 for i = 1: no_of_rows
     y(i, :) = results(i: no_of_rows: size(results, 1), 5);
 end
-errorbar(x, mean(y,2), std(y,0,2)/sqrt(size(y, 2)), 'LineStyle', '--', 'DisplayName', "Delivery Rate - Flooding");
-title(sprintf("Delivery Rate. %s", subtitle), 'FontSize', fontsize, 'Interpreter', 'latex');
+errorbar(x, mean(y,2), std(y,0,2)/sqrt(size(y, 2)), 'LineStyle', '--', 'DisplayName', "Delivery ratio - Flooding");
+title(sprintf("Delivery ratio. %s", subtitle), 'FontSize', fontsize, 'Interpreter', 'latex');
 xlabel(xlabel_text, 'FontSize', fontsize, 'Interpreter', 'latex');
-ylabel("Delivery Rate $$(\%)$$", 'FontSize', fontsize, 'Interpreter', 'latex');
+ylabel("Delivery ratio $$(\%)$$", 'FontSize', fontsize, 'Interpreter', 'latex');
 ylim([0 110]);
 yticks(0:10:100);
 xlim([0 x(end)+1]);
@@ -290,7 +293,8 @@ set(gca,'YScale','log')
 grid on
 title(sprintf("Overhead. %s", subtitle), 'Interpreter', 'latex', 'FontSize', fontsize);
 xlabel(xlabel_text, 'Interpreter', 'latex', 'FontSize', fontsize);
-ylabel("Average number of tries per successful delivery", 'FontSize', fontsize);
+ylabeltext = sprintf("Average number of transmissions \n per successful packet delivery");
+ylabel(ylabeltext, 'FontSize', fontsize);
 % yticks(0:10:100);
 xlim([0 x(end)+1]);
 xticks([0 x])
