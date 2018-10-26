@@ -226,12 +226,27 @@ classdef QRSim<handle
     methods (Access=public)
         
         function [mark_pt_ct, tr_ct, success, hop_count, end_to_end_delay, redundancy_count] = petal_send_message(obj, msg, transmitter, mark_points, boff_type, T_ub)
-            % Returns: scat_ct : number of nodes involved by this message
-            %                    transmission. (Either transmitted or received)
+            % Input: 
+            %   msg: the message to be transmitted. Either an object
+            %        of uav_message or geo_message class.
+            %   transmitter: ID of the transmitting drone. Integer value.
+            %   mark_points: A boolean to control visual. If 1 the
+            %        simulation shall color-mark the drones.
+            %   boff_type: 1->random; 2-> coordinated; 3-> coordinated
+            %   random. As explained in Trisha's paper. Integer value.
+            %   T_ub: Upper bound on backoff-time. As explained in Trisha's
+            %   paper. Float value.
+            % Returns: mark_pt_ct : number of nodes involved by this message
+            %                    transmission. (Either transmitted or
+            %                    received). Not used for performance
+            %                    evaluation. Used for managing visuals on
+            %                    the plot.
             %  tr_ct: Number of retransmissions of this message.
             %  success: Whether this message was successfully delivered.
             % hop_count: If successful delivery, then the number of nodes
-            % this message visited.
+            % this message visited. 
+            % redundancy_count: Immaterial. DO NOT CONSIDER.
+            
             if obj.simState.platforms{transmitter}.isValid() == false
                 fprintf("\n Drone %d state not valid", transmitter);
                 return
