@@ -18,13 +18,13 @@ classdef State<handle
         camerascnt_;  % cameras counter
         obstacles;      %ababujo
         message_loss = 1  % pranjan. Message shall be lost or not? 0 = NO, 1 = YES.
-        repeat_plume_msg = 0 % pranjan. Repeatedly send plumeDetected message. 0= NO, 1 = YES.
-        send_plume_detected = 0 % pranjan. Should a drone Send a plume detected message? 0=NO, 1= Yes
+        repeat_plume_msg = 0 % pranjan. DEPRECATED. Repeatedly send plumeDetected message. 0= NO, 1 = YES.
+        send_plume_detected = 0 % pranjan. DEPRECATED. Should a drone Send a plume detected message? 0=NO, 1= Yes
         send_coordinates = 1 % pranjan. Each drone shall advertise it's x,y,z coordinates
         dist_scale = 8   % 1 unit on the 3D display is 'dist_scale' meters in actual.
-        number_of_drones = 0;  % workaround to change the number of drones at run time. Let it be 0 and SHOULD NOT be used at any new place.
-        radio_propagation_cons_sigma = 2; % Standard deviation for the gaussian random variable N 
-        radio_propagation_cons_mean = -20; %  Mean for the gaussian radom variable N
+        number_of_drones = 0;  % Let it be 0 and SHOULD NOT be used at any new place. It was a quick workaround to change the number of drones at run time.
+        radio_propagation_cons_sigma = 2; % Standard deviation for the gaussian random variable N in path loss calculation.
+        radio_propagation_cons_mean = -20; %  Mean for the gaussian radom variable N in path loss calculation.
     end
 end
 

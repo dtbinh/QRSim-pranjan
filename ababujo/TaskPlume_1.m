@@ -34,7 +34,7 @@ classdef TaskPlume_1<Task
         time =0;
         vt; % to store target velocities
         furthest_pairs;     % pranjan:
-        formation_type = "spherical"; 
+        formation_type = "mesh"; 
         number_of_pairs = 1;  
         % pranjan: made N4 a non constant variable to change the number of drones at run time.
         N4 = 36;       % drones when sensing another drone carries straight on assuming the other drones would change its route
@@ -57,7 +57,7 @@ classdef TaskPlume_1<Task
             %          params - the task parameters
             %
             fprintf("I was called\n");
-            if obj.simState.number_of_drones > 0  % Wordaround to dynamically change the number of drones at run time. Used to study network density.
+            if obj.simState.number_of_drones > 0  % Workaround to dynamically change the number of drones at run time. Used to study network density.
                 obj.N4 = obj.simState.number_of_drones;
             end
             taskparams.dt = 0.2; % task timestep i.e. rate at which controls
@@ -67,7 +67,7 @@ classdef TaskPlume_1<Task
             
             %%%%% visualization %%%%%
             % 3D display parameters
-            taskparams.display3d.on = 0;
+            taskparams.display3d.on = 1;
             taskparams.display3d.width = 1000;
             taskparams.display3d.height = 600;
             
@@ -163,7 +163,6 @@ classdef TaskPlume_1<Task
         function uniform_random_formation(obj)
             % Use this to generate random drones in a 3D Volume specified
             % by the below coordinates.   
-            % Prefer to use the other function.
           
             N = obj.N4;
             x_min = -30;
@@ -188,6 +187,7 @@ classdef TaskPlume_1<Task
 
         
         function random_speherical(obj)
+            % In spehrical formation type the nodes shall be positioned on the surface of the plume in a random distribution. 
             N = obj.N4;
             theta = 2 * pi * rand(1,N);  % Generate 36 values between 0 to 360 degrees.
             phi = asin(-1+2*rand(1,N));
@@ -298,7 +298,10 @@ classdef TaskPlume_1<Task
             acc_mag = force / mass;
         end
         
-        function UU = step(obj, U)
+        function UU = step1(obj, U)
+            % Used only in performance evaluation. Doesn't do any force
+            % calculation. The drones keep on moving with their initial
+            % velocity.
             obj.time = obj.time +1;
             N = obj.N4;
             UU = zeros(5, N);
@@ -311,7 +314,7 @@ classdef TaskPlume_1<Task
         
         % in step(), the drone takes a step based on its relative position
         % with each other and also to other dronee, obstacles, etc..
-        function UU = step1(obj,U)
+        function UU = step(obj,U)
             obj.time = obj.time +1;
             
             N = obj.N4;
@@ -363,7 +366,12 @@ classdef TaskPlume_1<Task
                     else
                         % If UAV_i detected a plume then move towards UAV_i
                         % Else keep moving in the original direction.
-                        %UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(),U(:,me),0);
+                        % UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(),U(:,me),0);
+                        % The previous logic was that if there is no
+                        % resultant force then move along the X axis. This
+                        % lead to jerks in the drone's motion. Uncomment
+                        % the above line and comment out the next two line 
+                        % to get that behaviour. 
                         target_vel = obj.simState.platforms{me}.target_velocity;
                         UU(:,me) = obj.PIDs{me}.computeU(obj.simState.platforms{me}.getX(), target_vel ,0);
                     end

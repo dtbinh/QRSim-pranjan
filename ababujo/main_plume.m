@@ -14,7 +14,7 @@ qrsim = QRSim();
 
 state = qrsim.init('TaskPlume_1');
 unicast = 0;
-evaluate_node_mobility_effect = 1;
+evaluate_node_mobility_effect = 0;
 % reminder:
 % platforms in N1 -> no sensing features
 % platforms in N2 -> senses everything within 10f from it
